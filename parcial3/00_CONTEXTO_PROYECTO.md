@@ -161,30 +161,129 @@ Este archivo es la **base absoluta** del depurador visual en el IDE.
 
 ## 6. Decisiones Tecnológicas del Equipo
 
-### 6.1 Compilador
+### 6.1 Entorno Estándar
+- **SO**: WSL con Ubuntu para todos los integrantes
+- **Estructura**: Monorepo único con todo el código (compilador Java, simulador C y frontend web)
+
+### 6.2 Estructura del Monorepo
+
+```
+parcial3/
+├── motor_compilador/        ← M1 + M2: proyecto Java (IntelliJ IDEA)
+│   └── Compiladores_Tiny_Generacion_2022_1/
+│       └── src/
+│           ├── especificacion/    ← lexico.flex, sintactico.cup, JARs
+│           └── ve/edu/unet/       ← código Java fuente y nodos AST
+├── simulador_tm/            ← M3: TM.C modificado + Makefile
+├── servidor_puente/         ← Puente Node.js/Express (nuevo)
+├── interfaz-ide/            ← M4: proyecto React + TypeScript
+├── TM.C                     ← Original de referencia
+├── tmsimv1.html             ← Referencia visual del depurador
+├── estado_tm_mock.json      ← Contrato JSON oficial M3 → M4
+├── 00_CONTEXTO_PROYECTO.md
+└── 01_PLAN_DESARROLLO.md
+```
+
+### 6.3 Compilador (Módulo 1 + 2)
 - **Lenguaje**: Java (sin cambio)
-- **Herramientas**: JFlex (lexer) + CUP (parser), igual que el código base
-- **Punto de partida**: `Compiladores_Tiny_Generacion_2022_3` tal cual está
+- **Herramientas**: JFlex + CUP — los JARs están en `src/especificacion/`
+- **Flujo de trabajo**: editar `lexico.flex` → regenerar con JFlex → editar `sintactico.cup` → regenerar con CUP. **Nunca editar `Lexico.java`, `parser.java` o `sym.java` directamente.**
+- **SDK requerido**: JDK 11 (el proyecto referencia "corretto-11" — ver sección 8 sobre bloqueos)
 
-### 6.2 IDE Frontend
-- **Framework**: React + TypeScript
-- **Estilo**: Similar a VS Code / Kiro IDE (paneles laterales, editor central, consola inferior)
-- **Empaquetado**: Electron o Tauri si el tiempo lo permite; de lo contrario queda como web app local
-- **Base del depurador**: Migrar/integrar la lógica de `tmsimv1.html` dentro del proyecto React
+### 6.4 IDE Frontend (Módulo 4)
+- **Framework**: React + TypeScript (Vite)
+- **Estilo**: Inspirado en VS Code (editor central, panel depurador derecho, consola inferior)
+- **Empaquetado**: web app local en primera entrega; Electron/Tauri si el tiempo lo permite
+- **Base del depurador**: La lógica JS de `tmsimv1.html` portada a un componente React
 
-### 6.3 Comunicación Frontend ↔ Compilador Java
-- El compilador Java se expone como proceso externo
-- El IDE lo invoca y lee su salida (código `.tm` + errores con número de línea)
-- Mecanismo: servidor local Node.js/Express que actúa como puente, o directamente desde el proceso main de Electron
+### 6.5 Simulador TM (Módulo 3)
+- **Base**: `TM.C` original compilado con `gcc` en WSL
+- **Modificación requerida**: Agregar un modo interactivo (`-s` flag) donde TM.C lea comandos de `stdin` y emita JSON por `stdout` después de cada comando
+- **Anti-buffering obligatorio**: `setbuf(stdout, NULL)` al inicio del `main()` — sin esto el JSON no llega al pipe
 
-### 6.4 Simulador TM
-- **Estrategia principal**: Extraer y portar la lógica JS del `tmsimv1.html` directamente al componente React del depurador (elimina dependencia de TM.C para la visualización)
-- **Estrategia alternativa**: Modificar `TM.C` para comunicación por stdin/stdout y llamarlo como subproceso desde el backend Node.js
+### 6.6 Arquitectura de Comunicación
 
-### 6.5 Control de Versiones
+```
+[React Frontend]
+   │  WebSocket (tm_state events)
+   │  HTTP POST /compile
+   ▼
+[servidor_puente — Node.js/Express]
+   │  child_process.spawn() con stdin/stdout piped
+   │  child_process.spawn() para compilador Java
+   ├──────────────────────────────────────────►  [TM.C ejecutable]
+   │   stdin: "load path\n" / "step\n" / "run\n" / "reset\n"    │
+   │   stdout: JSON estado (una línea por comando)               │
+   │◄─────────────────────────────────────────────────────────── │
+   └──────────────────────────────────────────►  [java ve.edu.unet.parser archivo.tny]
+       stdout: código .tm                                         │
+       stderr: errores JSON con número de línea                   │
+```
+
+### 6.7 Contrato JSON: Estado de la TM (M3 → M4)
+
+El ejecutable TM.C emite **una línea JSON** por `stdout` después de cada comando. Estructura completa:
+
+```json
+{
+  "registros": {
+    "PC": 10, "AC": 5, "AC1": 0,
+    "GP": 0,  "MP": 20, "FP": 0,
+    "R2": 0,  "R3": 0
+  },
+  "memoria_datos": {
+    "0": 15, "1": 25, "20": 100,
+    "_size": 1024
+  },
+  "memoria_instrucciones": [
+    { "linea": 0, "op": "LD", "r": 6, "d": 0, "s": 0, "comentario": "..." },
+    { "linea": 1, "op": "ST", "r": 0, "d": 0, "s": 0, "comentario": "..." }
+  ],
+  "total_instrucciones": 42,
+  "instruccion_ejecutada": { "linea": 9, "op": "JLT", "r": 0, "d": 2, "s": 7 },
+  "estado": "ejecutando",
+  "resultado_paso": "OK",
+  "mensaje_error": null,
+  "esperando_input": false,
+  "breakpoints": []
+}
+```
+
+**Comandos que acepta TM.C por stdin:**
+
+| Comando | Acción |
+|---------|--------|
+| `load <ruta>\n` | Carga un archivo .tm, devuelve estado inicial |
+| `step\n` | Ejecuta una instrucción, devuelve nuevo estado |
+| `run\n` | Ejecuta hasta HALT o breakpoint, devuelve estado final |
+| `reset\n` | Reinicia PC y registros, devuelve estado inicial |
+| `break <linea>\n` | Toggle breakpoint en esa línea |
+
+**Valores posibles de `resultado_paso`:**
+
+| Valor | Significado |
+|-------|-------------|
+| `"OK"` | Instrucción ejecutada sin problemas |
+| `"HALT"` | Programa terminó normalmente |
+| `"IMEM_ERR"` | PC fuera del rango de instrucciones |
+| `"DMEM_ERR"` | Acceso a memoria de datos fuera de rango |
+| `"ZERO_DIVIDE"` | División por cero |
+
+### 6.8 Contrato de Errores: Compilador Java → Consola del IDE
+
+El compilador Java imprime errores a `stderr` en formato JSON por línea:
+
+```json
+{ "tipo": "lexico",    "linea": 3,  "mensaje": "Caracter ilegal: @" }
+{ "tipo": "sintactico","linea": 7,  "mensaje": "Se esperaba SEMI" }
+{ "tipo": "semantico", "linea": 12, "mensaje": "Variable 'x' no declarada" }
+{ "tipo": "semantico", "linea": 15, "mensaje": "Tipos incompatibles: int vs bool" }
+```
+
+### 6.9 Control de Versiones
 - **Git obligatorio** (requisito del enunciado)
-- Repositorio compartido entre los 4 integrantes
-- Ramas por módulo, integración en `main`
+- Monorepo compartido entre los 4 integrantes
+- Ramas por módulo (`modulo-1`, `modulo-2`, `modulo-3`, `modulo-4`), integración en `main`
 
 ---
 
@@ -208,12 +307,55 @@ Este archivo es la **base absoluta** del depurador visual en el IDE.
 
 | Riesgo | Impacto | Mitigación |
 |--------|---------|------------|
-| El código base Java no compila de entrada | Alto | Primera tarea del Día 1: levantarlo en IntelliJ y resolverlo |
-| Integración entre módulos deja para el final | Alto | Definir interfaces/contratos entre módulos el Día 1 |
+| El código base Java no compila de entrada | Alto | Primera tarea del Día 1: levantarlo en IntelliJ y resolverlo (ver sección 9) |
+| Integración entre módulos deja para el final | Alto | Contratos JSON acordados (secciones 6.7 y 6.8), M4 usa mock desde el Día 1 |
 | Activations records para funciones son complejos | Alto | Simplificar: funciones sin recursión en primera versión funcional |
 | Tiempo insuficiente para Electron/Tauri | Medio | Dejar como web app, es igualmente válido para la entrega |
 | Un integrante no entiende la parte del otro | Alto | Reuniones diarias de 15 min donde cada uno explica su avance |
 | Tipos `string` requieren gestión de heap/memoria | Medio | Implementar `string` como literales de solo lectura en primera versión |
+| stdout buffering en TM.C congela el depurador | Alto | `setbuf(stdout, NULL)` al inicio del `main()` de TM.C — obligatorio |
+| IntelliJ no encuentra el JDK "corretto-11" | Alto | Ver sección 9 para instrucciones exactas de configuración |
+
+---
+
+## 9. Guía de Arranque para el Equipo Java ( Día 1)
+
+### 9.1 Configurar IntelliJ IDEA
+
+1. Clonar el monorepo y abrir la carpeta `motor_compilador/` como proyecto en IntelliJ.
+2. Ir a `File → Project Structure → Project` y cambiar el SDK al JDK 11 disponible en la máquina (el proyecto referencia "corretto-11" pero cualquier JDK 11 funciona — solo cambiar el nombre).
+3. En `File → Project Structure → Libraries`:
+   - Eliminar la librería llamada `especificacion` (apunta a `out/` que no existe en un clon fresco).
+   - Verificar que la librería `especificacion1` apunte a `src/especificacion/` — esa sí tiene los JARs en git.
+4. Hacer `Build → Build Project`. Debe compilar sin errores.
+5. Configurar un Run Configuration: Main class = `ve.edu.unet.parser`, Program arguments = ruta a un archivo `.tny`.
+6. Ejecutar con `ejemplo_fuente/factorial.tny` y verificar que imprime el AST y el código TM en la consola.
+
+### 9.2 Flujo para modificar el Lexer o el Parser
+
+> **NUNCA editar `Lexico.java`, `parser.java` ni `sym.java` directamente. Son archivos generados.**
+
+**Para agregar tokens (editar el lexer):**
+```bash
+# 1. Editar: src/especificacion/lexico.flex
+# 2. Regenerar Lexico.java desde la carpeta del proyecto:
+java -jar src/especificacion/jflex-full-1.8.2.jar \
+     -d src/ve/edu/unet/ \
+     src/especificacion/lexico.flex
+```
+
+**Para cambiar la gramática (editar el parser):**
+```bash
+# 1. Editar: src/especificacion/sintactico.cup
+# 2. Regenerar parser.java y sym.java:
+java -jar src/especificacion/java-cup-11b.jar \
+     -parser parser -symbols sym \
+     -package ve.edu.unet \
+     -destdir src/ve/edu/unet/ \
+     src/especificacion/sintactico.cup
+```
+
+Después de regenerar, hacer `Build → Build Project` de nuevo en IntelliJ.
 
 ---
 

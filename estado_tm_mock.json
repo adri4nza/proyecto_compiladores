@@ -1,0 +1,53 @@
+{
+  "_comentario": "Contrato oficial TM.C → Node.js bridge → React. Versión 2.0",
+
+  "registros": {
+    "PC":  10,
+    "AC":  5,
+    "AC1": 0,
+    "GP":  0,
+    "MP":  20,
+    "FP":  0,
+    "R2":  0,
+    "R3":  0
+  },
+
+  "memoria_datos": {
+    "0":  15,
+    "1":  25,
+    "20": 100,
+    "_size": 1024
+  },
+
+  "memoria_instrucciones": [
+    { "linea": 0, "op": "LD",  "r": 6, "d": 0,  "s": 0, "comentario": "cargar la maxima direccion desde la localidad 0" },
+    { "linea": 1, "op": "ST",  "r": 0, "d": 0,  "s": 0, "comentario": "limpio el registro de la localidad 0" },
+    { "linea": 2, "op": "IN",  "r": 0, "d": 0,  "s": 0, "comentario": "leer: lee un valor entero" },
+    { "linea": 3, "op": "ST",  "r": 0, "d": 0,  "s": 5, "comentario": "leer: almaceno el valor en id x" },
+    { "linea": 4, "op": "LDC", "r": 0, "d": 0,  "s": 0, "comentario": "cargar constante: 0" },
+    { "linea": 5, "op": "ST",  "r": 0, "d": 0,  "s": 6, "comentario": "op: push resultado izquierdo" },
+    { "linea": 6, "op": "LD",  "r": 0, "d": 0,  "s": 5, "comentario": "cargar valor de identificador: x" },
+    { "linea": 7, "op": "LD",  "r": 1, "d": 0,  "s": 6, "comentario": "op: pop valor izquierdo en AC1" },
+    { "linea": 8, "op": "SUB", "r": 0, "s": 1,  "t": 0, "comentario": "op: <" },
+    { "linea": 9, "op": "JLT", "r": 0, "d": 2,  "s": 7, "comentario": "voy dos instrucciones si verdadero" },
+    { "linea": 10,"op": "LDC", "r": 0, "d": 0,  "s": 0, "comentario": "caso de falso (AC=0)" },
+    { "linea": 41,"op": "HALT","r": 0, "d": 0,  "s": 0, "comentario": "Fin de la ejecucion." }
+  ],
+
+  "total_instrucciones": 42,
+
+  "instruccion_ejecutada": {
+    "linea": 9,
+    "op":    "JLT",
+    "r":     0,
+    "d":     2,
+    "s":     7,
+    "comentario": "voy dos instrucciones si verdadero"
+  },
+
+  "estado":        "ejecutando",
+  "resultado_paso": "OK",
+  "mensaje_error":  null,
+  "esperando_input": false,
+  "breakpoints": [5, 15]
+}

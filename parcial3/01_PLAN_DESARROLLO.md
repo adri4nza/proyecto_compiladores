@@ -7,42 +7,56 @@
 
 ## Arquitectura de Integración
 
-Antes de empezar hay que tener clara la forma en que los 4 módulos se comunican:
-
 ```
-  [Código .tny en el Editor]
-          │
-          ▼
-  [M1: Compilador Tiny++ (Java)]
-   Lexico → Parser → AST → Semántico
-          │
-          │ genera
-          ▼
-  [M2: Generador de Código (Java)]
-   AST → instrucciones .tm
-          │
-          │ .tm (texto) + errores (JSON con línea)
-          ▼
-  [Servidor puente Node.js / Electron IPC]
-          │
-          ├──► [M4: IDE React + consola de errores]
-          │
-          └──► [M3: Simulador TM (JS extraído de tmsimv1.html)]
-                Carga el .tm, ejecuta paso a paso
-                Expone: PC, GP, MP, AC, AC1, iMem[], dMem[]
-                          │
-                          ▼
-               [M4: Panel depurador visual en React]
+[React Frontend — M4]
+   │  WebSocket: recibe eventos "tm_state"
+   │  HTTP POST /compile: envía código fuente, recibe { tm_code, errors }
+   ▼
+[servidor_puente — Node.js/Express]
+   │  spawn() con stdio piped
+   ├──────────────────────────────────────────► [TM.C ejecutable — M3]
+   │   stdin:  "load path\n" / "step\n" / "run\n" / "reset\n" / "break N\n"
+   │   stdout: una línea JSON por comando (ver estado_tm_mock.json)
+   │◄──────────────────────────────────────────────────────────────────
+   └──────────────────────────────────────────► [java ve.edu.unet.parser archivo.tny — M1+M2]
+       stdout: código .tm en texto plano
+       stderr: JSON de errores con número de línea
 ```
 
-### Contrato entre módulos (definir el Día 1)
+### Contratos entre módulos — FIJADOS, no cambiar sin consenso del equipo
 
-| Interfaz | Formato acordado |
-|----------|-----------------|
-| Compilador → IDE | `stdout`: código `.tm` en texto plano |
-| Compilador → Consola | `stderr`: JSON `[{ "tipo": "lexico|sintactico|semantico", "linea": N, "mensaje": "..." }]` |
-| Simulador → Depurador | Objeto JS: `{ pc, gp, mp, ac, ac1, iMem: [...], dMem: [...] }` después de cada step |
-| IDE → Simulador | Llamadas a funciones JS: `load(tmCode)`, `step()`, `run()`, `reset()`, `setBreakpoint(line)` |
+**Contrato 1: Estado de la TM** (ver `estado_tm_mock.json` para el ejemplo completo)
+```json
+{
+  "registros":   { "PC": 0, "AC": 0, "AC1": 0, "GP": 0, "MP": 0, "FP": 0, "R2": 0, "R3": 0 },
+  "memoria_datos": { "0": 0, "_size": 1024 },
+  "memoria_instrucciones": [ { "linea": 0, "op": "LD", "r": 6, "d": 0, "s": 0, "comentario": "..." } ],
+  "total_instrucciones": 42,
+  "instruccion_ejecutada": { "linea": 0, "op": "LD", "r": 6, "d": 0, "s": 0 },
+  "estado": "ejecutando",
+  "resultado_paso": "OK",
+  "mensaje_error": null,
+  "esperando_input": false,
+  "breakpoints": []
+}
+```
+
+**Contrato 2: Errores del compilador** (una línea JSON por error en stderr)
+```json
+{ "tipo": "lexico",    "linea": 3,  "mensaje": "Caracter ilegal: @" }
+{ "tipo": "sintactico","linea": 7,  "mensaje": "Se esperaba SEMI" }
+{ "tipo": "semantico", "linea": 12, "mensaje": "Variable 'x' no declarada" }
+```
+
+**Contrato 3: Comandos stdin → TM.C**
+
+| Comando | Respuesta |
+|---------|-----------|
+| `load <ruta>\n` | JSON con estado inicial + `memoria_instrucciones` completa |
+| `step\n` | JSON con estado tras ejecutar una instrucción |
+| `run\n` | JSON con estado final (HALT o breakpoint) |
+| `reset\n` | JSON con estado reseteado |
+| `break <linea>\n` | JSON confirmando el toggle del breakpoint |
 
 ---
 
@@ -52,12 +66,23 @@ Antes de empezar hay que tener clara la forma en que los 4 módulos se comunican
 
 ### Mañana — Setup general (todos juntos, ~2 horas)
 
-- [ ] Crear el repositorio Git y definir estructura de carpetas
-- [ ] Abrir `Compiladores_Tiny_Generacion_2022_3` en IntelliJ y verificar que compila
-- [ ] Ejecutar el compilador con `factorial.tny` y confirmar que genera `facto.tm` correctamente
-- [ ] Abrir `tmsimv1.html` en el navegador y verificar que carga y ejecuta `facto.tm`
-- [ ] Leer el código de `tmsimv1.html` juntos para entender su estructura JS interna
-- [ ] Acordar y documentar el contrato de interfaces entre módulos (tabla de arriba)
+- [ ] Crear el repositorio Git con la estructura de carpetas del monorepo acordada
+- [ ] **M1+M2 — Configurar IntelliJ (ver guía completa en `00_CONTEXTO_PROYECTO.md` sección 9):**
+  - Abrir `motor_compilador/` como proyecto
+  - Cambiar el SDK a cualquier JDK 11 disponible (`File → Project Structure → Project`)
+  - En `Libraries`: eliminar `especificacion` (rota), conservar solo `especificacion1`
+  - Build → Build Project → debe compilar sin errores rojos
+  - Correr con `factorial.tny` y verificar salida en consola
+- [ ] **M3 — Compilar TM.C original en WSL:**
+  ```bash
+  cd simulador_tm && gcc TM.C -o tm && ./tm ejemplo_generado/facto.tm
+  ```
+- [ ] **M4 — Inicializar proyecto React:**
+  ```bash
+  cd interfaz-ide && npm create vite@latest . -- --template react-ts && npm install
+  ```
+- [ ] Copiar `estado_tm_mock.json` al proyecto React como fixture de datos
+- [ ] Acordar en voz alta los 3 contratos (ya están fijados arriba) y que todos los lean
 
 ### Módulo 1 — Frontend del Compilador (Lexico + Parser + AST)
 
@@ -114,63 +139,59 @@ Antes de empezar hay que tener clara la forma en que los 4 módulos se comunican
 
 ### Módulo 3 — Simulador TM
 
-**Tarea del día:** Extraer la lógica del simulador JS y preparar la API para React.
+**Tarea del día:** Agregar el modo interactivo a TM.C y exponer el estado como JSON.
 
-- [ ] Analizar `tmsimv1.html` y separar:
-  - El HTML/CSS de presentación (para M4)
-  - La lógica JS del simulador (para M3)
-- [ ] Extraer la lógica JS a un módulo TypeScript independiente: `TMSimulator.ts`
-- [ ] Definir la API pública del simulador:
-  ```typescript
-  interface TMState {
-    pc: number; gp: number; mp: number;
-    ac: number; ac1: number;
-    iMem: Instruction[];
-    dMem: number[];
-    halted: boolean;
-    lastResult: string;
-  }
-
-  class TMSimulator {
-    load(tmCode: string): void
-    step(): TMState
-    run(): TMState
-    reset(): void
-    setBreakpoint(line: number): void
-    getState(): TMState
+- [ ] **Primera línea del `main()`**: `setbuf(stdout, NULL);` — sin esto el JSON no llega al pipe
+- [ ] Agregar flag `-s` (server mode): cuando se pasa, TM.C no ejecuta el programa, sino que entra en un loop leyendo comandos de stdin
+- [ ] Implementar el loop de comandos:
+  ```c
+  // Pseudocódigo del modo interactivo
+  char comando[256];
+  while(fgets(comando, sizeof(comando), stdin)) {
+      if (startsWith(comando, "load ")) { /* cargar .tm, imprimir JSON estado */ }
+      else if (strcmp(comando, "step\n")==0) { /* ejecutar una instrucción, imprimir JSON */ }
+      else if (strcmp(comando, "run\n")==0)  { /* ejecutar hasta HALT/breakpoint, imprimir JSON */ }
+      else if (strcmp(comando, "reset\n")==0){ /* resetear PC y registros, imprimir JSON */ }
+      fflush(stdout); // OBLIGATORIO después de cada printf de JSON
   }
   ```
-- [ ] Implementar `load()` (parsear el texto .tm al array `iMem[]`)
-- [ ] Implementar `step()` (ejecutar una instrucción, actualizar estado)
-- [ ] Implementar `getState()` (devolver el estado completo)
-- [ ] Probar con `facto.tm` directamente en Node.js o en consola del navegador
-- [ ] **Entregable del día:** `TMSimulator.ts` funcionando. Puede cargar `facto.tm` y ejecutar `step()` devolviendo el estado correcto.
+- [ ] Implementar `imprimirEstadoJSON()`: función que arma el JSON completo del estado actual
+- [ ] La función debe imprimir **todo en una línea** (sin saltos internos) y terminar con `\n`
+- [ ] Probar manualmente: `echo "load facto.tm" | ./tm -s` debe devolver JSON válido
+- [ ] **Entregable del día:** `./tm -s` funciona en modo interactivo. M4 puede usarlo con el mock y ya tiene el real.
 
 ### Módulo 4 — IDE React + Integración
 
-**Tarea del día:** Estructura base del IDE funcionando. Sin features de Tiny++ todavía.
+**Tarea del día:** Estructura base del IDE con depurador renderizando el mock desde el Día 1.
 
-- [ ] Inicializar proyecto: `npm create vite@latest tiny-ide -- --template react-ts`
-- [ ] Instalar dependencias base: `Monaco Editor` (editor de código), `xterm.js` (consola), `tailwindcss`
-- [ ] Crear el layout principal del IDE (inspirado en VS Code):
+- [ ] Instalar dependencias: `@monaco-editor/react`, `socket.io-client`
+- [ ] Crear el layout principal (inspirado en VS Code):
   ```
   ┌─────────────────────────────────────────────────────────┐
-  │  Toolbar: [Compilar] [Run] [Step] [Stop] [Reset]        │
+  │  Toolbar: [Compilar] [▶ Run] [⏭ Step] [⏹ Stop] [↺ Reset] │
   ├───────────────────────────┬─────────────────────────────┤
   │                           │  DEBUGGER PANEL             │
-  │   EDITOR DE CÓDIGO        │  ┌─────────┬─────────────┐ │
-  │   (Monaco Editor)         │  │Registros│ Instr. Mem  │ │
-  │                           │  ├─────────┴─────────────┤ │
-  │                           │  │    Data Memory        │ │
-  │                           │  └───────────────────────┘ │
+  │   EDITOR DE CÓDIGO        │  Registros: PC GP MP AC AC1 │
+  │   (Monaco Editor)         │  ─────────────────────────  │
+  │                           │  Memoria de Instrucciones   │
+  │                           │  (tabla, resalta línea PC)  │
+  │                           │  ─────────────────────────  │
+  │                           │  Memoria de Datos           │
+  │                           │  (tabla sparse, resalta     │
+  │                           │   celdas que cambiaron)     │
   ├───────────────────────────┴─────────────────────────────┤
-  │  CONSOLA (errores de compilación / output del programa) │
+  │  CONSOLA (errores compilación + output OUT de la TM)    │
   └─────────────────────────────────────────────────────────┘
   ```
-- [ ] Integrar Monaco Editor con syntax highlighting básico para Tiny
-- [ ] Crear el servidor puente: pequeño Express + `child_process` para invocar el compilador Java
-- [ ] Probar flujo completo: escribir `factorial.tny` → clic Compilar → ver `.tm` en consola
-- [ ] **Entregable del día:** IDE abre, tiene editor funcional, botón Compilar invoca el Java y muestra el .tm o errores en consola.
+- [ ] **Renderizar el depurador con `estado_tm_mock.json`** — no esperar a M3. Crear un hook `useTMState` que empiece con el mock y luego se conecte al WebSocket real.
+- [ ] Implementar el componente `RegisterPanel`: muestra los 8 registros, resalta en verde el PC
+- [ ] Implementar el componente `InstructionMemoryPanel`: tabla de instrucciones, fila actual resaltada
+- [ ] Implementar el componente `DataMemoryPanel`: tabla de direcciones/valores, resalta celdas cambiadas
+- [ ] Crear el `servidor_puente/index.js` básico con Express + WebSocket que:
+  - `POST /compile`: spawna el Java compiler, devuelve `{ tm_code, errors }`
+  - WebSocket: reenvía JSON del TM.C al cliente React
+- [ ] Probar flujo completo con el compilador Tiny original: escribir `factorial.tny` → compilar → ver `.tm` en consola
+- [ ] **Entregable del día:** El depurador renderiza correctamente el mock JSON. Los paneles de registros, instrucciones y datos funcionan visualmente. El botón Compilar invoca el Java y muestra resultado.
 
 ---
 
