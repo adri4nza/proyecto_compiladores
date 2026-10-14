@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="especificacion1">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/Compiladores_Tiny_Generacion_2022_1/src/especificacion/java-cup-11b-runtime.jar!/" />
+      <root url="jar://$PROJECT_DIR$/Compiladores_Tiny_Generacion_2022_1/src/especificacion/java-cup-11b.jar!/" />
+      <root url="jar://$PROJECT_DIR$/Compiladores_Tiny_Generacion_2022_1/src/especificacion/jflex-full-1.8.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

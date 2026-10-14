@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TM Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0: #07090a;
+  --bg1: #0d1214;
+  --bg2: #131a1d;
+  --bg3: #1a2428;
+  --bg4: #222e33;
+  --bg5: #2c3c42;
+  --border:  #1e2e34;
+  --border2: #2a3e46;
+  --text:    #b0ccd4;
+  --text2:   #6a9aaa;
+  --text3:   #3a5a68;
+  --amber:   #e0a020;
+  --amber2:  #f0c050;
+  --amber-dim:#7a5808;
+  --green:   #40c880;
+  --green2:  #70e0a0;
+  --green-dim:#1a6038;
+  --red:     #d04848;
+  --red-dim: #602020;
+  --cyan:    #38b8c8;
+  --cyan-dim:#185868;
+  --blue:    #3888d0;
+  --pc-bg:   rgba(64, 200, 128, 0.10);
+  --pc-border: rgba(64, 200, 128, 0.55);
+  --bp-bg:   rgba(208, 72, 72, 0.12);
+  --bp-border: rgba(208, 72, 72, 0.55);
+  --chg-bg:  rgba(224, 160, 32, 0.13);
+  --font: 'IBM Plex Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg0);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+#header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border2);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 36px;
+}
+#logo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  margin-right: 4px;
+}
+#logo span { color: var(--text3); }
+#file-name {
+  color: var(--text2);
+  font-size: 11px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.btn {
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 3px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  line-height: 1.4;
+}
+.btn:hover:not(:disabled) { background: var(--bg5); color: var(--amber2); border-color: var(--text3); }
+.btn.go   { color: var(--green);  border-color: var(--green-dim); }
+.btn.go:hover:not(:disabled) { background: rgba(64,200,128,.10); border-color: var(--green); }
+.btn.warn { color: var(--amber);  border-color: var(--amber-dim); }
+.btn.warn:hover:not(:disabled) { background: rgba(224,160,32,.10); border-color: var(--amber); }
+.btn.stop { color: var(--red);    border-color: var(--red-dim); }
+.btn.stop:hover:not(:disabled) { background: rgba(208,72,72,.10); border-color: var(--red); }
+.btn:disabled { opacity: 0.35; cursor: default; }
+
+/* ── PASTE SECTION ──────────────────────────────────────── */
+#paste-wrap {
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+  flex-shrink: 0;
+  display: none;
+}
+#paste-wrap.visible { display: block; }
+#paste-ta {
+  width: 100%;
+  height: 110px;
+  background: var(--bg0);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 6px;
+  resize: vertical;
+  outline: none;
+}
+#paste-ta:focus { border-color: var(--cyan-dim); }
+#paste-footer { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+#paste-err { color: var(--red); font-size: 10px; }
+
+/* ── MAIN 3-COL LAYOUT ──────────────────────────────────── */
+#main {
+  display: grid;
+  grid-template-columns: 214px 1fr 370px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+.col { border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.col:last-child { border-right: none; }
+.sec-title {
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  padding: 3px 8px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text3);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* ── LEFT: CONTROLS ─────────────────────────────────────── */
+#ctrl-sec {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 8px;
+  flex-shrink: 0;
+}
+#step-status { display: flex; gap: 8px; margin-bottom: 7px; align-items: baseline; }
+#step-count { font-size: 11px; color: var(--text2); }
+#step-result { font-size: 11px; color: var(--amber); }
+.ctrl-row { display: flex; gap: 4px; margin-bottom: 5px; align-items: center; }
+.num-in {
+  background: var(--bg0);
+  border: 1px solid var(--border2);
+  color: var(--amber);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 3px 5px;
+  width: 52px;
+  text-align: right;
+  outline: none;
+}
+.num-in:focus { border-color: var(--amber-dim); }
+.label-sm { font-size: 10px; color: var(--text3); }
+
+/* ── LEFT: REGISTERS ────────────────────────────────────── */
+#reg-sec {
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 8px;
+  flex-shrink: 0;
+}
+.reg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.reg-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 5px;
+  background: var(--bg3);
+  border: 1px solid transparent;
+  transition: background 0.2s, border-color 0.2s;
+}
+.reg-row.chg { background: var(--chg-bg); border-color: var(--amber-dim); }
+.reg-lbl { color: var(--text3); font-size: 10px; width: 24px; }
+.reg-lbl.sp { color: var(--cyan); }
+.reg-val { color: var(--amber); font-weight: 500; flex: 1; text-align: right; font-size: 11px; }
+
+/* ── LEFT: IO LOG ───────────────────────────────────────── */
+#io-sec { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-bottom: 1px solid var(--border); min-height: 60px; }
+#io-log { flex: 1; overflow-y: auto; padding: 5px; }
+.io-e { padding: 1px 4px; font-size: 11px; line-height: 1.5; }
+.io-in   { color: var(--cyan); }
+.io-out  { color: var(--amber); }
+.io-halt { color: var(--red); }
+.io-err  { color: var(--red); font-weight: 500; }
+.io-info { color: var(--text3); }
+#in-row {
+  display: none;
+  gap: 5px;
+  padding: 5px 6px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  background: rgba(56, 184, 200, 0.06);
+}
+#in-prompt { color: var(--green); font-size: 10px; white-space: nowrap; }
+#in-val {
+  flex: 1;
+  background: var(--bg0);
+  border: 1px solid var(--green-dim);
+  color: var(--green);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 3px 6px;
+  outline: none;
+  min-width: 0;
+}
+#in-val:focus { border-color: var(--green); }
+
+/* ── LEFT: WATCHPOINTS ──────────────────────────────────── */
+#watch-sec {
+  background: var(--bg2);
+  padding: 7px 8px;
+  flex-shrink: 0;
+}
+.wrow { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; font-size: 10px; color: var(--text2); flex-wrap: wrap; }
+.wrow:last-child { margin-bottom: 0; }
+.w-in {
+  background: var(--bg0);
+  border: 1px solid var(--border2);
+  color: var(--red);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 2px 5px;
+  width: 58px;
+  outline: none;
+  text-align: right;
+}
+.w-in:focus { border-color: var(--red-dim); }
+input[type=checkbox] { accent-color: var(--red); cursor: pointer; }
+
+/* ── CENTER: DATA MEMORY ────────────────────────────────── */
+#dmem-col { }
+.tab-bar {
+  display: flex;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tab {
+  padding: 5px 14px;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.12s, border-color 0.12s;
+  user-select: none;
+}
+.tab.active { color: var(--amber); border-bottom-color: var(--amber); background: var(--bg3); }
+.tab:hover:not(.active) { color: var(--text2); }
+#dmem-cfg {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.cfg-lbl { font-size: 9px; color: var(--text3); white-space: nowrap; }
+.rng-in {
+  background: var(--bg0);
+  border: 1px solid var(--border2);
+  color: var(--cyan);
+  font-family: var(--font);
+  font-size: 10px;
+  padding: 2px 5px;
+  width: 52px;
+  text-align: right;
+  outline: none;
+}
+.rng-in:focus { border-color: var(--cyan-dim); }
+#dmem-info { font-size: 9px; color: var(--text3); margin-left: auto; }
+#dmem-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+table.mtbl { width: 100%; border-collapse: collapse; }
+table.mtbl thead { position: sticky; top: 0; background: var(--bg3); z-index: 2; }
+table.mtbl th {
+  padding: 3px 7px;
+  text-align: left;
+  font-size: 9px;
+  color: var(--text3);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--border);
+}
+table.mtbl td { padding: 2px 7px; border-bottom: 1px solid var(--border); font-size: 11px; }
+.d-addr { color: var(--text3); width: 46px; }
+.d-val { text-align: right; width: 58px; }
+.d-val.nz { color: var(--amber); }
+.d-val.chg { color: var(--green2) !important; background: var(--chg-bg); }
+.d-note { color: var(--text3); font-size: 9px; font-style: italic; }
+tr.d-watch { background: var(--bp-bg); }
+tr.d-fp    { background: rgba(56,136,208,.06); }
+
+/* ── RIGHT: INSTRUCTION MEMORY ──────────────────────────── */
+#imem-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+table.itbl { width: 100%; border-collapse: collapse; }
+table.itbl thead { position: sticky; top: 0; background: var(--bg3); z-index: 2; }
+table.itbl th {
+  padding: 3px 5px;
+  text-align: left;
+  font-size: 9px;
+  color: var(--text3);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--border);
+}
+.i-row {
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.08s;
+  border-left: 2px solid transparent;
+}
+.i-row:hover { background: var(--bg4); }
+.i-row.pc  { background: var(--pc-bg) !important; border-left-color: var(--pc-border); }
+.i-row.bp  { background: var(--bp-bg); border-left-color: var(--bp-border); }
+.i-row.pc.bp { background: rgba(224,160,32,.10) !important; border-left-color: var(--amber); }
+.i-row td  { padding: 2px 5px; font-size: 11px; }
+.i-marker  { width: 14px; text-align: center; font-size: 10px; padding-left: 2px !important; }
+.i-loc     { color: var(--text3); width: 28px; }
+.i-op      { color: var(--cyan); font-weight: 500; width: 34px; }
+.i-args    { color: var(--text2); width: 90px; font-size: 10px; }
+.i-comment { color: var(--text3); font-style: italic; font-size: 10px; }
+
+/* ── STATUS BAR ─────────────────────────────────────────── */
+#statusbar {
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  padding: 3px 10px;
+  font-size: 9px;
+  color: var(--text3);
+  flex-shrink: 0;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+#sb-status { color: var(--amber); }
+#sb-pc     { color: var(--green); }
+
+/* ── SCROLLBARS ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg1); }
+::-webkit-scrollbar-thumb { background: var(--bg5); border-radius: 3px; }
+
+/* ── MISC ───────────────────────────────────────────────── */
+.empty-msg { padding: 30px 16px; color: var(--text3); font-size: 11px; line-height: 2; }
+</style>
+</head>
+<body>
+
+<!-- ─── HEADER ──────────────────────────────────────────── -->
+<div id="header">
+  <div id="logo">▸ TM<span>sim</span></div>
+  <span id="file-name">no program loaded</span>
+  <button class="btn" id="btn-paste-toggle">paste ▾</button>
+  <label class="btn go" style="cursor:pointer">
+    load .tm
+    <input type="file" id="file-in" accept=".tm,.txt" style="display:none">
+  </label>
+</div>
+
+<!-- ─── PASTE SECTION ───────────────────────────────────── -->
+<div id="paste-wrap">
+  <div style="font-size:9px;color:var(--text3);margin-bottom:5px;letter-spacing:.1em;">
+    PASTE TM PROGRAM &nbsp;·&nbsp; format: &nbsp; loc: OPCODE r,d(s) * comment
+  </div>
+  <textarea id="paste-ta" placeholder="0: IN 0,0,0   * read input&#10;1: HALT 0,0,0  * done"></textarea>
+  <div id="paste-footer">
+    <button class="btn go" id="btn-load-paste">load from text</button>
+    <span id="paste-err"></span>
+  </div>
+</div>
+
+<!-- ─── MAIN ─────────────────────────────────────────────── -->
+<div id="main">
+
+  <!-- ── LEFT COLUMN ─────────────────────────── -->
+  <div class="col">
+
+    <!-- Controls -->
+    <div id="ctrl-sec">
+      <div id="step-status">
+        <span id="step-count">Step: 0</span>
+        <span id="step-result">READY</span>
+      </div>
+      <div class="ctrl-row">
+        <button class="btn go" id="btn-step1">▶ Step</button>
+        <input type="number" class="num-in" id="n-val" value="10" min="1" title="N for step×N">
+        <button class="btn go" id="btn-stepn">▶▶ ×N</button>
+      </div>
+      <div class="ctrl-row">
+        <button class="btn warn" id="btn-run">⚡ Run</button>
+        <button class="btn stop" id="btn-stop" style="display:none">■ Stop</button>
+        <button class="btn" id="btn-reset">↺ Reset</button>
+      </div>
+    </div>
+
+    <!-- Registers -->
+    <div id="reg-sec">
+      <div class="sec-title">Registers</div>
+      <div class="reg-grid" id="reg-grid"></div>
+    </div>
+
+    <!-- IO Log -->
+    <div id="io-sec">
+      <div class="sec-title">I/O Log</div>
+      <div id="io-log"></div>
+      <div id="in-row">
+        <span id="in-prompt">IN ▸</span>
+        <input type="number" id="in-val" placeholder="integer…">
+        <button class="btn go" id="btn-in-ok">↵</button>
+      </div>
+    </div>
+
+    <!-- Watchpoints -->
+    <div id="watch-sec">
+      <div class="sec-title" style="margin:-7px -8px 7px;">Data Watchpoint</div>
+      <div class="wrow">
+        <label><input type="checkbox" id="w-en"> enable</label>
+      </div>
+      <div class="wrow">
+        <span>addr:</span>
+        <input type="number" class="w-in" id="w-addr" value="0" min="0" max="1023">
+      </div>
+      <div class="wrow">
+        <label><input type="checkbox" id="w-val-en"> value =</label>
+        <input type="number" class="w-in" id="w-val" value="0">
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CENTER: DATA MEMORY ─────────────────── -->
+  <div class="col" id="dmem-col">
+    <div class="tab-bar">
+      <div class="tab active" data-tab="low"  onclick="switchTab('low')">Low ↑ (0→)</div>
+      <div class="tab"        data-tab="high" onclick="switchTab('high')">High ↓ (←1023)</div>
+    </div>
+    <div id="dmem-cfg">
+      <span class="cfg-lbl" id="cfg-lbl">Start addr:</span>
+      <input type="number" class="rng-in" id="rng-start" value="0" min="0" max="1023">
+      <span class="cfg-lbl">Count:</span>
+      <input type="number" class="rng-in" id="rng-count" value="64" min="1" max="1024">
+      <button class="btn" onclick="renderDmem()" style="font-size:9px;padding:2px 7px;">apply</button>
+      <span id="dmem-info"></span>
+    </div>
+    <div id="dmem-scroll">
+      <table class="mtbl">
+        <thead><tr><th>Addr</th><th style="text-align:right">Value</th><th>Note</th></tr></thead>
+        <tbody id="dmem-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: INSTRUCTION MEMORY ──────────── -->
+  <div class="col">
+    <div class="sec-title">Instruction Memory
+      <span style="float:right;font-weight:400;letter-spacing:.05em;color:var(--text3)">click row = toggle breakpoint</span>
+    </div>
+    <div id="imem-scroll">
+      <table class="itbl">
+        <thead><tr><th></th><th>Loc</th><th>Op</th><th>Args</th><th>Comment</th></tr></thead>
+        <tbody id="imem-body">
+          <tr><td colspan="5" class="empty-msg">Load a .tm file or paste code.<br>Click any row to toggle a ● breakpoint.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── STATUS BAR ───────────────────────────────────────── -->
+<div id="statusbar">
+  <span>TM Simulator · Louden 1997</span>
+  <span id="sb-status">load a program to begin</span>
+  <span id="sb-pc">PC: —</span>
+  <span id="sb-watch"></span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT — TM SIMULATOR ENGINE + UI
+     ═══════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── Constants ──────────────────────────────────────────────
+const ISIZE = 1024, DSIZE = 1024, NREGS = 8, PC = 7;
+
+const OP = ['HALT','IN','OUT','ADD','SUB','MUL','DIV','????',
+            'LD','ST','????',
+            'LDA','LDC','JLT','JLE','JGT','JGE','JEQ','JNE','????'];
+
+// Step result codes
+const OK='OK', HALTED='Halted', IMEM='IMEM_ERR', DMEM='DMEM_ERR',
+      ZDIV='ZERO_DIV', NEEDS_IN='NEEDS_IN', BP='Breakpoint', WP='Watchpoint';
+
+// ── Machine State ───────────────────────────────────────────
+let iMem = [], dMem = [], reg = [], stepCount = 0, lastResult = 'READY';
+let ioLog = [], breakpoints = new Set();
+let prevReg = [], prevDMem = [], lastWrite = -1;
+let programLoaded = false, running = false, waitInput = false, pendingCb = null;
+let dmemTab = 'low';
+let tabCfg = { low: {start:0, count:64}, high: {start:960, count:64} };
+
+// Watchpoint
+let wEn=false, wAddr=0, wValEn=false, wVal=0;
+
+// ── opClass ─────────────────────────────────────────────────
+function cls(op) { return op<=6?'RR': op<=9?'RM':'RA'; }
+
+// ── Format args ─────────────────────────────────────────────
+function fmtArgs(inst) {
+  if (cls(inst.iop)==='RR') return `${inst.a1},${inst.a2},${inst.a3}`;
+  return `${inst.a1},${inst.a2}(${inst.a3})`;
+}
+
+// ── Parser ──────────────────────────────────────────────────
+function parseProgram(text) {
+  iMem = Array.from({length:ISIZE}, (_,i) =>
+    ({iop:0, a1:0, a2:0, a3:0, comment:'', loc:i, has:false}));
+
+  const errors=[], lines=text.split('\n');
+  let maxLoc=0;
+
+  for (let ln=0; ln<lines.length; ln++) {
+    let line = lines[ln].replace(/\r/g,'').trimEnd();
+    if (!line.trim() || line.trim()[0]==='*') continue;
+
+    const ci = line.indexOf(':');
+    if (ci<0) { errors.push(`L${ln+1}: missing colon`); continue; }
+
+    const loc = parseInt(line.slice(0,ci).trim());
+    if (isNaN(loc)||loc<0||loc>=ISIZE) { errors.push(`L${ln+1}: bad loc`); continue; }
+
+    let rest = line.slice(ci+1).trim();
+
+    // Extract comment after *
+    let comment='';
+    const si = rest.indexOf('*');
+    if (si>=0) { comment=rest.slice(si+1).trim(); rest=rest.slice(0,si).trim(); }
+
+    // Opcode token
+    const sep = rest.search(/[\s,]/);
+    let opStr = (sep<0 ? rest : rest.slice(0,sep)).toUpperCase();
+    let argStr = sep<0 ? '' : rest.slice(sep).replace(/\s+/g,'');
+
+    // Match opcode (4-char prefix)
+    let opNum = -1;
+    for (let i=0; i<OP.length; i++) {
+      if (OP[i]!=='????' && OP[i].startsWith(opStr.slice(0,4))) { opNum=i; break; }
+    }
+    if (opNum<0||OP[opNum]==='????') { errors.push(`L${ln+1}: unknown op "${opStr}"`); continue; }
+
+    let a1=0,a2=0,a3=0;
+    const parts = argStr.split(',');
+
+    if (cls(opNum)==='RR') {
+      a1=parseInt(parts[0])||0;
+      a2=parseInt(parts[1])||0;
+      a3=parseInt(parts[2])||0;
+    } else {
+      a1=parseInt(parts[0])||0;
+      const ds = (parts[1]||'')+(parts[2]||'');
+      const m = ds.match(/^(-?\d+)\((\d+)\)$/);
+      if (m) { a2=parseInt(m[1]); a3=parseInt(m[2]); }
+      else {
+        a2=parseInt(parts[1])||0;
+        a3=parseInt((parts[2]||'').replace(/[()]/g,''))||0;
+      }
+    }
+
+    iMem[loc] = {iop:opNum, a1, a2, a3, comment, loc, has:true};
+    maxLoc=Math.max(maxLoc,loc);
+  }
+  return {errors,maxLoc};
+}
+
+// ── Reset ───────────────────────────────────────────────────
+function resetMachine() {
+  dMem = new Array(DSIZE).fill(0); dMem[0]=DSIZE-1;
+  reg  = new Array(NREGS).fill(0);
+  stepCount=0; lastResult='READY'; ioLog=[]; lastWrite=-1;
+  prevReg=[...reg]; prevDMem=[...dMem];
+  running=false; waitInput=false; pendingCb=null;
+}
+
+// ── stepTM ──────────────────────────────────────────────────
+function stepTM() {
+  const pc=reg[PC];
+  if (pc<0||pc>=ISIZE) return IMEM;
+
+  reg[PC]=pc+1;
+  const inst=iMem[pc];
+  const c=cls(inst.iop);
+  let r=inst.a1, s,t,m;
+
+  if (c==='RR') { s=inst.a2; t=inst.a3; }
+  else {
+    s=inst.a3; m=inst.a2+reg[s];
+    if (c==='RM'&&(m<0||m>=DSIZE)) return DMEM;
+  }
+
+  prevReg=[...reg];
+  lastWrite=-1;
+
+  switch(inst.iop){
+    case 0:  // HALT
+      reg[PC]=pc;
+      ioLog.push({t:'halt',msg:`HALT at ${pc}`});
+      stepCount++; return HALTED;
+
+    case 1:  // IN
+      reg[PC]=pc;
+      return NEEDS_IN;
+
+    case 2:  // OUT
+      ioLog.push({t:'out',msg:`OUT: ${reg[r]}`});
+      break;
+
+    case 3:  reg[r]=reg[s]+reg[t]; break;
+    case 4:  reg[r]=reg[s]-reg[t]; break;
+    case 5:  reg[r]=reg[s]*reg[t]; break;
+    case 6:
+      if(reg[t]===0) return ZDIV;
+      reg[r]=Math.trunc(reg[s]/reg[t]); break;
+
+    case 8:   reg[r]=dMem[m]; break; // LD
+    case 9:   dMem[m]=reg[r]; lastWrite=m; break; // ST
+
+    case 11:  reg[r]=m; break; // LDA
+    case 12:  reg[r]=inst.a2; break; // LDC
+    case 13:  if(reg[r]< 0) reg[PC]=m; break;
+    case 14:  if(reg[r]<=0) reg[PC]=m; break;
+    case 15:  if(reg[r]> 0) reg[PC]=m; break;
+    case 16:  if(reg[r]>=0) reg[PC]=m; break;
+    case 17:  if(reg[r]===0) reg[PC]=m; break;
+    case 18:  if(reg[r]!==0) reg[PC]=m; break;
+  }
+
+  stepCount++;
+
+  // Check data watchpoint
+  if (wEn && lastWrite===wAddr) {
+    if (!wValEn || dMem[wAddr]===wVal) return WP;
+  }
+
+  // Check next-PC breakpoint
+  if (breakpoints.has(reg[PC])) return BP;
+
+  return OK;
+}
+
+// ── Execute helpers ─────────────────────────────────────────
+function doStep1() {
+  if (!programLoaded||waitInput) return;
+  if (lastResult===HALTED) return;
+  const r=stepTM();
+  if (r===NEEDS_IN) { setupInputWait(()=>updateUI()); }
+  else { lastResult=r; updateUI(); }
+}
+
+function doStepN(n) {
+  if (!programLoaded||waitInput) return;
+  if (lastResult===HALTED) return;
+  let r=OK;
+  for (let i=0;i<n&&r===OK;i++){
+    r=stepTM();
+    if(r===NEEDS_IN){
+      setupInputWait(()=>{ doStepN(n-i-1); });
+      updateUI(); return;
+    }
+  }
+  lastResult=r; updateUI();
+}
+
+// Async run (chunked to avoid blocking UI)
+function doRun() {
+  if (!programLoaded||waitInput) return;
+  if (lastResult===HALTED) return;
+  running=true; updateRunBtns();
+
+  function chunk() {
+    if (!running) { updateUI(); return; }
+    let r=OK;
+    // Run up to 2000 steps per frame
+    for (let i=0;i<2000&&r===OK;i++){
+      r=stepTM();
+      if (r===NEEDS_IN){
+        setupInputWait(()=>{ running=true; updateRunBtns(); requestAnimationFrame(chunk); });
+        lastResult=r; running=false; updateUI(); return;
+      }
+      if (r!==OK) break;
+    }
+    lastResult=r;
+    if (r===OK) { requestAnimationFrame(chunk); }
+    else { running=false; updateRunBtns(); updateUI(); }
+  }
+  requestAnimationFrame(chunk);
+}
+
+function doStop() { running=false; updateRunBtns(); updateUI(); }
+
+function doReset() {
+  if (!programLoaded) return;
+  running=false; waitInput=false; pendingCb=null;
+  resetMachine();
+  hideInput(); updateRunBtns(); updateUI();
+}
+
+// ── Input handling ──────────────────────────────────────────
+function setupInputWait(cb) {
+  waitInput=true; pendingCb=cb;
+  document.getElementById('in-row').style.display='flex';
+  document.getElementById('in-val').focus();
+}
+
+function submitInput() {
+  const raw=document.getElementById('in-val').value;
+  const v=parseInt(raw);
+  if (isNaN(v)) { document.getElementById('in-val').select(); return; }
+  
+  // Execute the IN manually: find the IN instruction at current PC
+  const pc=reg[PC];
+  const inst=iMem[pc];
+  reg[inst.a1]=v;
+  reg[PC]=pc+1;
+  stepCount++;
+  ioLog.push({t:'in', msg:`IN: ${v} → reg[${inst.a1}]`});
+  
+  // Check if new PC is a breakpoint
+  let r=OK;
+  if (breakpoints.has(reg[PC])) r=BP;
+  
+  hideInput();
+  waitInput=false;
+  if (r!==OK) { lastResult=r; const cb=pendingCb; pendingCb=null; updateUI(); return; }
+  
+  const cb=pendingCb; pendingCb=null;
+  if (cb) cb();
+}
+
+function hideInput() {
+  document.getElementById('in-row').style.display='none';
+  document.getElementById('in-val').value='';
+}
+
+// ── Load program ────────────────────────────────────────────
+function loadProgram(text, name) {
+  const {errors}=parseProgram(text);
+  if (errors.length>0) {
+    document.getElementById('paste-err').textContent=errors.slice(0,3).join(' | ');
+    alert('Parse errors:\n'+errors.join('\n')); return false;
+  }
+  document.getElementById('paste-err').textContent='';
+  programLoaded=true;
+  breakpoints.clear();
+  resetMachine();
+  document.getElementById('file-name').textContent=name||'pasted program';
+  updateUI();
+  return true;
+}
+
+// ── Update Run Buttons ───────────────────────────────────────
+function updateRunBtns() {
+  document.getElementById('btn-run').style.display =running?'none':'';
+  document.getElementById('btn-stop').style.display=running?'':'none';
+}
+
+// ─────────────────────────────────────────────────────────────
+// UI RENDERING
+// ─────────────────────────────────────────────────────────────
+
+function updateUI() {
+  renderRegisters();
+  renderDmem();
+  renderImem();
+  renderIOLog();
+
+  document.getElementById('step-count').textContent=`Step: ${stepCount}`;
+
+  const rEl=document.getElementById('step-result');
+  rEl.textContent=lastResult;
+  rEl.style.color=
+    lastResult===HALTED?'var(--red)':
+    lastResult===OK?'var(--green)':
+    lastResult==='READY'?'var(--text2)':
+    lastResult===BP||lastResult===WP?'var(--amber)':'var(--red)';
+
+  document.getElementById('sb-status').textContent=lastResult;
+  document.getElementById('sb-pc').textContent=`PC: ${programLoaded?reg[PC]:'—'}`;
+  document.getElementById('sb-watch').textContent=
+    wEn?`▲ watch addr:${wAddr}${wValEn?'='+wVal:''}` : '';
+}
+
+// Registers
+const REG_NAMES=['r0','r1','r2','r3','r4','r5','r6','pc'];
+function renderRegisters() {
+  const g=document.getElementById('reg-grid');
+  g.innerHTML='';
+  for(let i=0;i<NREGS;i++){
+    const chg=reg[i]!==prevReg[i];
+    const d=document.createElement('div');
+    d.className='reg-row'+(chg?' chg':'');
+    d.innerHTML=`<span class="reg-lbl${i===PC?' sp':''}">${REG_NAMES[i]}:</span>`
+               +`<span class="reg-val">${reg[i]}</span>`;
+    g.appendChild(d);
+  }
+}
+
+// Data Memory
+function renderDmem() {
+  const start=parseInt(document.getElementById('rng-start').value)||0;
+  const count=parseInt(document.getElementById('rng-count').value)||64;
+  const fp=reg[6]; // reg[6] often used as FP in TINY
+  const tb=document.getElementById('dmem-body');
+  tb.innerHTML='';
+
+  let addrs=[];
+  if(dmemTab==='low'){
+    for(let a=start;a<Math.min(start+count,DSIZE);a++) addrs.push(a);
+  } else {
+    const top=Math.min(start+count-1,DSIZE-1);
+    for(let a=top;a>=start;a--) addrs.push(a);
+  }
+
+  document.getElementById('dmem-info').textContent=
+    `[${addrs[addrs.length-1]}…${addrs[0]}]`;
+
+  for(const a of addrs){
+    const v=dMem[a], nz=v!==0, chg=a===lastWrite;
+    const isWatch=wEn&&a===wAddr;
+    const isFP=a===fp&&fp!==0;
+    let note='';
+    if(a===0) note='gp';
+    if(isFP) note+=(note?'+':'')+'fp';
+
+    const tr=document.createElement('tr');
+    tr.className=isWatch?'d-watch':isFP?'d-fp':'';
+    tr.innerHTML=`<td class="d-addr">${a}</td>`
+                +`<td class="d-val${nz?' nz':''}${chg?' chg':''}">${v}</td>`
+                +`<td class="d-note">${note}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+// Instruction Memory
+function renderImem() {
+  const tb=document.getElementById('imem-body');
+  const pc=reg[PC];
+  tb.innerHTML='';
+  let pcRow=null, anyInstr=false;
+
+  for(let loc=0;loc<ISIZE;loc++){
+    const inst=iMem[loc];
+    if(!inst||!inst.has) continue;
+    anyInstr=true;
+
+    const isPC=loc===pc, isBP=breakpoints.has(loc);
+    const tr=document.createElement('tr');
+    tr.className='i-row'+(isPC?' pc':'')+(isBP?' bp':'');
+    tr.onclick=()=>toggleBP(loc);
+
+    const marker=isBP?'<span style="color:var(--red)">●</span>':
+                  isPC?'<span style="color:var(--green)">▶</span>':'';
+
+    tr.innerHTML=`<td class="i-marker">${marker}</td>`
+                +`<td class="i-loc">${loc}</td>`
+                +`<td class="i-op">${OP[inst.iop]||'?'}</td>`
+                +`<td class="i-args">${fmtArgs(inst)}</td>`
+                +`<td class="i-comment">${inst.comment}</td>`;
+    tb.appendChild(tr);
+    if(isPC) pcRow=tr;
+  }
+
+  if(!anyInstr){
+    tb.innerHTML='<tr><td colspan="5" class="empty-msg">Load a .tm file or paste code above.<br>Click a row to toggle ● breakpoint.</td></tr>';
+    return;
+  }
+  if(pcRow) setTimeout(()=>pcRow.scrollIntoView({block:'center',behavior:'smooth'}),30);
+}
+
+// IO Log
+function renderIOLog() {
+  const el=document.getElementById('io-log');
+  el.innerHTML=ioLog.map(e=>{
+    const c=e.t==='in'?'io-in':e.t==='out'?'io-out':e.t==='halt'?'io-halt':'io-err';
+    return `<div class="io-e ${c}">${e.msg}</div>`;
+  }).join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+// Breakpoints
+function toggleBP(loc) {
+  if(breakpoints.has(loc)) breakpoints.delete(loc);
+  else breakpoints.add(loc);
+  renderImem();
+}
+
+// Tab switch
+function switchTab(tab) {
+  tabCfg[dmemTab].start=parseInt(document.getElementById('rng-start').value)||0;
+  tabCfg[dmemTab].count=parseInt(document.getElementById('rng-count').value)||64;
+  dmemTab=tab;
+  document.getElementById('rng-start').value=tabCfg[tab].start;
+  document.getElementById('rng-count').value=tabCfg[tab].count;
+  document.querySelectorAll('.tab').forEach(t=>
+    t.classList.toggle('active', t.dataset.tab===tab));
+  document.getElementById('cfg-lbl').textContent=
+    tab==='low'?'Start addr (↑):':'Start addr (↓):';
+  renderDmem();
+}
+
+// ─────────────────────────────────────────────────────────────
+// EVENT BINDINGS
+// ─────────────────────────────────────────────────────────────
+
+// File load
+document.getElementById('file-in').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>loadProgram(ev.target.result, f.name);
+  r.readAsText(f);
+  e.target.value='';
+});
+
+// Paste toggle
+document.getElementById('btn-paste-toggle').addEventListener('click',()=>{
+  document.getElementById('paste-wrap').classList.toggle('visible');
+});
+
+// Load from paste
+document.getElementById('btn-load-paste').addEventListener('click',()=>{
+  const t=document.getElementById('paste-ta').value;
+  if(!t.trim()) return;
+  if(loadProgram(t,'pasted program'))
+    document.getElementById('paste-wrap').classList.remove('visible');
+});
+
+// Control buttons
+document.getElementById('btn-step1').addEventListener('click', doStep1);
+document.getElementById('btn-stepn').addEventListener('click',()=>
+  doStepN(Math.max(1,parseInt(document.getElementById('n-val').value)||1)));
+document.getElementById('btn-run').addEventListener('click', doRun);
+document.getElementById('btn-stop').addEventListener('click', doStop);
+document.getElementById('btn-reset').addEventListener('click', doReset);
+
+// Input submit
+document.getElementById('btn-in-ok').addEventListener('click', submitInput);
+document.getElementById('in-val').addEventListener('keydown',e=>{
+  if(e.key==='Enter') submitInput();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if(e.key==='s'||e.key==='S') doStep1();
+  if(e.key==='r'||e.key==='R') doRun();
+  if(e.key==='Escape') doStop();
+});
+
+// Watchpoint controls
+document.getElementById('w-en').addEventListener('change',e=>{
+  wEn=e.target.checked;
+  wAddr=parseInt(document.getElementById('w-addr').value)||0;
+  renderDmem(); updateUI();
+});
+document.getElementById('w-addr').addEventListener('input',e=>{
+  wAddr=parseInt(e.target.value)||0;
+  if(wEn) renderDmem();
+});
+document.getElementById('w-val-en').addEventListener('change',e=>{ wValEn=e.target.checked; });
+document.getElementById('w-val').addEventListener('input',e=>{ wVal=parseInt(e.target.value)||0; });
+
+// Range apply on Enter
+['rng-start','rng-count'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown',e=>{
+    if(e.key==='Enter') renderDmem();
+  });
+});
+
+// ── INIT ────────────────────────────────────────────────────
+resetMachine();
+renderRegisters();
+renderDmem();
+</script>
+</body>
+</html>
