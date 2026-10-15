@@ -1,0 +1,65 @@
+/* Paleta de colores tomada de tmsimv1.html para mantener consistencia visual */
+:root {
+  --bg0:       #07090a;
+  --bg1:       #0d1214;
+  --bg2:       #131a1d;
+  --bg3:       #1a2428;
+  --bg4:       #222e33;
+  --bg5:       #2c3c42;
+  --border:    #1e2e34;
+  --border2:   #2a3e46;
+  --text:      #b0ccd4;
+  --text2:     #6a9aaa;
+  --text3:     #3a5a68;
+  --amber:     #e0a020;
+  --amber2:    #f0c050;
+  --amber-dim: #7a5808;
+  --green:     #40c880;
+  --green2:    #70e0a0;
+  --green-dim: #1a6038;
+  --red:       #d04848;
+  --red-dim:   #602020;
+  --cyan:      #38b8c8;
+  --cyan-dim:  #185868;
+  --font: 'IBM Plex Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg0);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+}
+
+::-webkit-scrollbar              { width: 6px; height: 6px; }
+::-webkit-scrollbar-track        { background: var(--bg1); }
+::-webkit-scrollbar-thumb        { background: var(--bg5); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover  { background: var(--text3); }
+
+/* Reutilizable: cabecera de panel */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  min-height: 26px;
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
