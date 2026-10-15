@@ -1,0 +1,11 @@
+{ Caso VALIDO 02: arreglos. Declaracion con tamano, asignacion a un
+  elemento con indice calculado como expresion, lectura hacia un
+  elemento y escritura de un elemento.
+  Debe compilar con CERO errores y salir con codigo 0. }
+int A[10];
+int i;
+i := 2;
+A[i*2+1] := 5;
+read A[i];
+write A[0];
+write A[i]

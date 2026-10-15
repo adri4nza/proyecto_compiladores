@@ -1,0 +1,14 @@
+{ Caso VALIDO 04: procedimientos. Llamada como sentencia y parametro
+  de tipo arreglo (paso por referencia, "int W[]").
+  Debe compilar con CERO errores y salir con codigo 0. }
+int V[5];
+int n;
+procedure mostrar(int v)
+  write v
+end;
+procedure llenar(int W[], int k)
+  W[0] := k
+end;
+n := 7;
+llenar(V, n);
+mostrar(n)

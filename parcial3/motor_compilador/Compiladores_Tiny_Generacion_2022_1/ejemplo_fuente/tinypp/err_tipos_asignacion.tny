@@ -1,0 +1,6 @@
+{ Caso INVALIDO: se asigna un valor bool a una variable int.
+  Error esperado: semantico "Tipos incompatibles: int vs bool"
+  en la LINEA 6. Debe salir con codigo 1. }
+int x;
+bool f;
+x := f

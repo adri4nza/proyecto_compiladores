@@ -1,0 +1,5 @@
+{ Caso INVALIDO: se usa la variable 'y' sin haberla declarado.
+  Error esperado: semantico "Variable 'y' no declarada" en la LINEA 5.
+  Debe salir con codigo 1. }
+int x;
+write y

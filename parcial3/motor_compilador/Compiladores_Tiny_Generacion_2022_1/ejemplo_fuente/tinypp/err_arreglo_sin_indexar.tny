@@ -1,0 +1,6 @@
+{ Caso INVALIDO: se usa el arreglo 'A' sin indexarlo en una expresion.
+  Error esperado: semantico "'A' es un arreglo y debe indexarse"
+  en la LINEA 6. Debe salir con codigo 1. }
+int A[5];
+int x;
+x := A

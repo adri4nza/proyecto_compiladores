@@ -1,0 +1,9 @@
+{ Caso INVALIDO: la funcion 'suma' declara 2 parametros y se la llama
+  con 1 solo argumento.
+  Error esperado: semantico "La funcion 'suma' espera 2 argumentos, se
+  recibieron 1" en la LINEA 9. Debe salir con codigo 1. }
+int r;
+function int suma(int a, int b)
+  return a + b
+end;
+r := suma(1)

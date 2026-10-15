@@ -1,0 +1,23 @@
+{ Caso VALIDO 06: alcance lexico. 'dato' es int en el ambito global y
+  bool dentro de la funcion 'prueba' (sombreado con tipos distintos);
+  ademas el procedimiento 'primero' llama a 'segundo', que se declara
+  MAS ABAJO en el archivo (lo resuelve la pasada de firmas).
+  Debe compilar con CERO errores y salir con codigo 0. }
+int dato;
+function int prueba(int n)
+  bool dato;
+  dato := n = 0;
+  if dato then
+    return 0
+  else
+    return n
+  end
+end;
+procedure primero(int v)
+  segundo(v + 1)
+end;
+procedure segundo(int w)
+  write w
+end;
+dato := prueba(5);
+primero(dato)

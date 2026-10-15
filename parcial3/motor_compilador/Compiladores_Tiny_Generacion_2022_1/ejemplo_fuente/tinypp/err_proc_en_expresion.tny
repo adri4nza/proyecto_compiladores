@@ -1,0 +1,10 @@
+{ Caso INVALIDO: se usa un procedimiento donde se espera un valor.
+  Un procedimiento no retorna nada, asi que no puede aparecer en el
+  lado derecho de una asignacion.
+  Error esperado: semantico "'mostrar' es un procedimiento y no retorna
+  un valor" en la LINEA 10. Debe salir con codigo 1. }
+int r;
+procedure mostrar(int v)
+  write v
+end;
+r := mostrar(1)

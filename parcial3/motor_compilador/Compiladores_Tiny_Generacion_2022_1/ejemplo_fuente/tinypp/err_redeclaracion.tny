@@ -1,0 +1,5 @@
+{ Caso INVALIDO: la variable 'x' se declara dos veces en el mismo ambito.
+  Error esperado: semantico "La variable 'x' ya fue declarada en este
+  ambito" en la LINEA 5. Debe salir con codigo 1. }
+int x;
+int x
