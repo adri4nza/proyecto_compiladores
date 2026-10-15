@@ -12,10 +12,10 @@
 
 | Integrante | Módulo | Responsabilidad Principal |
 |------------|--------|---------------------------|
-| Responsable M1 | Módulo 1 | Lexer, Parser, AST, Análisis Semántico |
-| Responsable M2 | Módulo 2 | Generación de Código TM |
-| Responsable M3 | Módulo 3 | Simulador TM interactivo (C) |
-| Responsable M4 | Módulo 4 | IDE React + Servidor puente Node.js |
+| Ricardo | Módulo 1 | Lexer, Parser, AST, Análisis Semántico |
+| Ivan    | Módulo 2 | Generación de Código TM |
+| Carlos  | Módulo 3 | Simulador TM interactivo (C) |
+| Francisco   | Módulo 4 | IDE React + Servidor puente Node.js |
 
 > La distribución sigue exactamente los 4 módulos del enunciado. Todos los integrantes deben conocer el flujo completo del proyecto para la defensa presencial, donde la nota individual depende del entendimiento de TODA la solución.
 
