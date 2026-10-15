@@ -30,5 +30,19 @@ public class NodoBase {
 	public boolean TieneHermano() {
 		return (HermanoDerecha!=null);
 	}
-	
+
+	/* Linea del fuente donde aparece este nodo. La fija el parser en sus
+	 * acciones semanticas. Sirve para reportar errores (Contrato B del equipo). */
+	private int linea = -1;
+	public int  getLinea()      { return linea; }
+	public void setLinea(int l) { linea = l; }
+
+	/* Anotaciones que rellena AnalizadorSemantico y consume el generador (M2) */
+	private Tipo tipo = Tipo.ERROR;                 // tipo sintetizado de la expresion
+	private ve.edu.unet.RegistroSimbolo registro;   // simbolo ya resuelto
+	public Tipo getTipo()           { return tipo; }
+	public void setTipo(Tipo t)     { tipo = t; }
+	public ve.edu.unet.RegistroSimbolo getRegistro()       { return registro; }
+	public void setRegistro(ve.edu.unet.RegistroSimbolo r) { registro = r; }
+
 }

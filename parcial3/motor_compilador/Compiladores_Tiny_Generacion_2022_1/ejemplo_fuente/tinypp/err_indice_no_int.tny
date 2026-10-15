@@ -1,0 +1,6 @@
+{ Caso INVALIDO: el indice de un arreglo no es de tipo int.
+  Error esperado: semantico "El indice de un arreglo debe ser de tipo
+  int, se encontro bool" en la LINEA 6. Debe salir con codigo 1. }
+int A[5];
+bool f;
+write A[f]

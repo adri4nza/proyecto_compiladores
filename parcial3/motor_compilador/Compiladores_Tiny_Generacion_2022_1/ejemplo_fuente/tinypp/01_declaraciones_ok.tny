@@ -1,0 +1,16 @@
+{ Caso VALIDO 01: declaraciones de los tres tipos base de Tiny++
+  (int, bool, string), asignaciones, read y write.
+  Debe compilar con CERO errores y salir con codigo 0.
+  Nota: la variable string solo se declara. En esta version las cadenas
+  son de SOLO LECTURA: una variable string no se puede asignar ni
+  escribir, solo el literal es escribible. }
+int x;
+int y;
+bool f;
+string s;
+read x;
+y := x + 1;
+f := y = 0;
+write y;
+write f;
+write "fin"

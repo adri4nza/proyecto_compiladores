@@ -1,0 +1,9 @@
+{ Caso VALIDO 03: declaracion de una funcion con parametros y su
+  llamada dentro de una expresion.
+  Debe compilar con CERO errores y salir con codigo 0. }
+int r;
+function int suma(int a, int b)
+  return a + b
+end;
+r := suma(3, 4) + 1;
+write r

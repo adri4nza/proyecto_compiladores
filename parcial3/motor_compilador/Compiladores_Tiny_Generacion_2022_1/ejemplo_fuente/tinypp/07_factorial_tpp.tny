@@ -1,0 +1,17 @@
+{ Version Tiny++ del factorial clasico.
+  Identico al ejemplo_fuente/factorial.tny original salvo por las
+  declaraciones, que Tiny++ exige. Sirve de ancla de regresion:
+  el codigo objeto generado debe ser byte a byte el mismo que el
+  del Tiny original, lo que demuestra que el analisis semantico
+  asigna las mismas direcciones de memoria que cargarTabla. }
+int x;
+int fact;
+read x;
+if 0 < x then
+  fact := 1;
+  repeat
+    fact := fact * x;
+    x := x - 1
+  until x = 0;
+  write fact
+end
