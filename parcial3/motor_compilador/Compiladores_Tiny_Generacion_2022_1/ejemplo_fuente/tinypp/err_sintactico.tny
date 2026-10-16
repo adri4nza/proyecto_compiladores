@@ -1,0 +1,7 @@
+{ Caso INVALIDO: falta el ';' que separa la sentencia 'read x' de la
+  sentencia 'write x'.
+  Error esperado: sintactico en la LINEA 7, que es donde el parser
+  encuentra el token WRITE inesperado. Debe salir con codigo 1. }
+int x;
+read x
+write x

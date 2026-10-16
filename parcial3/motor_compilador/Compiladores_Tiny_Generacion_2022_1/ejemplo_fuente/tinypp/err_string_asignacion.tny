@@ -1,0 +1,6 @@
+{ Caso INVALIDO: se intenta asignar a una variable de tipo string.
+  Las cadenas son literales de SOLO LECTURA en esta version.
+  Error esperado: semantico "No se puede asignar a 's': las cadenas son
+  de solo lectura en esta version" en la LINEA 6. Codigo de salida 1. }
+string s;
+s := "hola"

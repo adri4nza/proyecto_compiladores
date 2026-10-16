@@ -1,0 +1,9 @@
+{ Caso INVALIDO: la funcion 'doble' declara retorno int pero su cuerpo
+  no tiene ninguna sentencia return.
+  Error esperado: semantico "La funcion 'doble' debe retornar un valor
+  de tipo int" en la LINEA 6 (linea del FUNCTION). Codigo de salida 1. }
+int r;
+function int doble(int a)
+  write a
+end;
+r := 0
