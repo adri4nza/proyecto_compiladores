@@ -20,23 +20,43 @@ Antes de trabajar en un módulo, lee el documento que corresponde (están en `pa
 
 ## Estado actual del repositorio
 
-Lo único implementado es el **código base suministrado**; el trabajo del proyecto aún no empezó:
+| Rama | Contenido |
+|------|-----------|
+| `main` | Código base suministrado + documentación del equipo |
+| `modulo-1` (PR #1, abierta) | Frontend Tiny++ completo: lexer, gramática (0 conflictos LALR), AST con línea/tipo/registro, pila de ámbitos, `AnalizadorSemantico`, `Errores` (Contrato B), suite `pruebas_m1.sh` |
+| `modulo-2` | Generación de código TM. **Parte de `modulo-1`** (no de `main`) porque depende del AST extendido |
+| `modulo-4` | IDE React + servidor puente (remota) |
 
 ```
 estado_tm_mock.json                      ← Contrato A, fixture para M4
 parcial3/
 ├── TM.C                                 ← simulador TM original de Louden (sin modificar)
 ├── tmsimv1.html                         ← simulador TM visual, archivo único, base del depurador
-├── motor_compilador/                    ← M1 + M2: compilador Tiny (Java, proyecto IntelliJ)
+├── modulo_1/                            ← PLAN_MODULO_1.md, TEORIA_MODULO_1.md, pruebas_m1.sh
+├── motor_compilador/                    ← M1 + M2: compilador Tiny++ (Java, proyecto IntelliJ)
 │   └── Compiladores_Tiny_Generacion_2022_1/
 │       ├── src/especificacion/          ← lexico.flex, sintactico.cup, JARs de JFlex y CUP
 │       ├── src/ve/edu/unet/             ← fuentes Java
-│       ├── ejemplo_fuente/*.tny         ← programas Tiny de prueba
+│       ├── ejemplo_fuente/*.tny         ← programas Tiny originales (factorial.tny ya NO compila: no declara variables)
+│       ├── ejemplo_fuente/tinypp/       ← fixtures Tiny++ (*_ok.tny y err_*.tny)
 │       └── ejemplo_generado/*.tm        ← código TM de referencia
 └── *.md                                 ← documentación del equipo
 ```
 
-Las carpetas `simulador_tm/`, `servidor_puente/` e `interfaz-ide/` que la documentación describe **todavía no existen**; hay que crearlas. No hay README, ni reglas de Cursor/Copilot, ni suite de pruebas automatizadas (la verificación es manual: compilar un `.tny` y comparar con los `.tm` de `ejemplo_generado/`).
+## Módulo 2 — punto de partida (traspaso de M1)
+
+Lee la sección "Traspaso al Modulo 2" y la tabla "Alerta de integración" de `parcial3/modulo_1/PLAN_MODULO_1.md`. Resumen:
+
+- **Resuelto en `modulo-2`:** Deuda A (cabeceras en stdout) y Deuda B (NPE del `not` unario, faltaban `case y/o`). `bool` se representa como entero 0/1: `not` = `1 - AC`, `and` = `MUL`, `or` = `ADD` normalizado; sin cortocircuito. Las declaraciones no emiten código (la dirección ya la asignó la tabla).
+- **Pendiente:** `Generador.generar` todavía no conoce `NodoAccesoArreglo`, `NodoFuncion`, `NodoProcedimiento`, `NodoLlamada`, `NodoRetorno` ni `NodoString` (caen en un comentario `BUG`, que con `UtGen.debug=false` no se imprime: `write "fin"` se pierde en silencio). Las asignaciones/lecturas indexadas tampoco están generadas. **Chequear `NodoDeclaracionArreglo` antes que `NodoDeclaracion`** (hereda de ella).
+- `NodoAsignacion` / `NodoLeer` tienen `indice` (`esIndexada()`) para `A[i] := e` y `read A[i]`.
+- Resolver direcciones con `nodo.getRegistro()` (anotado por el semántico; sobrevive al cierre de ámbitos), no con `getDireccion(String)`. `RegistroSimbolo` trae `tipo`, `categoria`, `tamano`, `nivel`, `esGlobal`, `desplazamiento`, `parametros`.
+- Globales: direcciones desde 0 (igual que el base). Locales/parámetros: `desplazamiento` desde 0 dentro del marco. `FP = reg[4]` reservado para los Activation Records.
+- Decisiones fijadas: `string` = literales de solo lectura (solo `write "..."`), **sin recursión**.
+- Ancla de regresión: `tinypp/07_factorial_tpp.tny` genera 41 instrucciones idénticas al Tiny original; no debe moverse salvo por las cabeceras eliminadas.
+- `pruebas_m1.sh` está en 68/68 con `DEUDA_CONOCIDA` vacía. Si se agrega deuda nueva y luego se arregla, la suite la reporta `RESUELTO` y **falla a propósito** hasta borrar la entrada.
+
+No hay README ni reglas de Cursor/Copilot. La verificación automatizada es `bash parcial3/modulo_1/pruebas_m1.sh` (pensada para WSL: en Git Bash de Windows falla si la ruta tiene espacios y porque el classpath usa `:`).
 
 Los directorios `out/` y los `.class` están versionados en git y no hay `.gitignore` propio. Al compilar desde terminal usa un directorio de salida fuera del repo o añade un `.gitignore` antes de hacer commit.
 
@@ -110,11 +130,10 @@ Los 4 módulos (M1 frontend del compilador, M2 generación de código, M3 simula
 
 ### Compilador: cómo encaja todo
 
-El `main()` vive dentro de `sintactico.cup` (bloque `parser code`) y ejecuta las fases en secuencia: `parse()` → `Util.imprimirAST(root)` → `TablaSimbolos.cargarTabla(root)` → `Generador.setTablaSimbolos(ts)` → `Generador.generarCodigoObjeto(root)`. **El análisis semántico de Tiny++ es una fase nueva que debe insertarse entre el parse y la generación.**
+El `main()` vive dentro de `sintactico.cup` (bloque `parser code`) y ejecuta: `parse()` → si hubo errores léxicos/sintácticos, `exit 1` → (`-debug`: `Util.imprimirAST` a stderr) → `new AnalizadorSemantico(ts).analizar(root)` → si hubo errores, `exit 1` → `Generador.setTablaSimbolos(ts)` → `Generador.generarCodigoObjeto(root)` → `exit 0`. Los errores salen por `Errores.lexico/sintactico/semantico` (Contrato B).
 
-- **AST deliberadamente simple**: `NodoBase` solo tiene `HermanoDerecha`. Las secuencias de sentencias son listas enlazadas por hermano derecho; los hijos son campos concretos de cada subclase (`NodoIf.getPrueba()`, `NodoRepeat.getCuerpo()`, …). No hay número de línea en los nodos — hay que agregarlo para cumplir el Contrato B (errores con `linea`).
-- `TablaSimbolos` es un `HashMap` plano con un contador `direccion` que se autoincrementa: un solo scope global, sin tipos, sin tamaños de arreglo. Para Tiny++ hay que convertirla en pila de scopes con tipos.
-- `cargarTabla()` inserta símbolos al **encontrar un `NodoIdentificador`**, no al declararlos. Por eso Tiny funciona sin declaraciones: la primera aparición reserva la dirección. Con tipado estricto esta lógica se invierte.
+- **AST deliberadamente simple**: `NodoBase` solo tiene `HermanoDerecha`. Las secuencias de sentencias son listas enlazadas por hermano derecho; los hijos son campos concretos de cada subclase (`NodoIf.getPrueba()`, `NodoRepeat.getCuerpo()`, …). `NodoBase` lleva además `getLinea()`, `getTipo()` (tipo sintetizado) y `getRegistro()` (símbolo resuelto).
+- `TablaSimbolos` es una pila de ámbitos (`abrirAmbito`/`cerrarAmbito`/`buscar`); los ámbitos cerrados quedan en `historial`. Conserva las firmas viejas (`getDireccion` devuelve `-1` si no encuentra, `cargarTabla` ya no se usa en el flujo normal).
 - `UtGen` es el emisor de instrucciones TM y lleva el contador `instruccionActual` / `instruccionMasAlta`. El **backpatching** (`emitirSalto` / `cargarRespaldo` / `restaurarRespaldo`) hace que las líneas se impriman **fuera de orden de PC** (p. ej. la línea 13 sale después de la 39). Es correcto: tanto `TM.C` como `tmsimv1.html` indexan por el prefijo `loc:`, no por orden de aparición.
 - Registros fijados en `UtGen`: `AC=0`, `AC1=1`, `GP=5`, `MP=6`, `PC=7`. El plan reserva `reg[4]` para `FP` (frame pointer) en los Activation Records de M2.
 - Layout de memoria actual: `dMem[0]` = dirección máxima (el preludio la carga en MP), `dMem[1..N]` = globales vía `GP`, pila temporal descendiendo desde `MP` con `desplazamientoTmp` en `Generador`.
@@ -129,12 +148,14 @@ El lector de `TM.C` (`readInstructions`) ignora líneas en blanco y las que empi
 
 ## Lenguaje: Tiny base vs. Tiny++
 
-El compilador base **ya funciona** para Tiny: `if/then/else/end`, `repeat/until`, `read`, `write`, `:=`, enteros, identificadores (solo letras, ver `lexico.flex`), `+ - * /`, `<`, `=`, comentarios `{...}`. El trabajo es **extenderlo, no reescribirlo**, y todo lo anterior debe seguir funcionando.
+El compilador base **ya funcionaba** para Tiny: `if/then/else/end`, `repeat/until`, `read`, `write`, `:=`, enteros, `+ - * /`, `<`, `=`, comentarios `{...}`. El trabajo es **extenderlo, no reescribirlo**.
 
-Falta por implementar: tipos `int`/`bool`/`string` con declaración obligatoria, arreglos unidimensionales con índice como expresión, funciones y procedimientos con parámetros, pila de scopes y verificación de tipos. Tokens nuevos para el lexer: `int`, `bool`, `string`, `true`, `false`, `function`, `procedure`, `return`, `[`, `]`, `,`, literales de cadena.
+M1 ya implementó el frontend de Tiny++ (tipos `int`/`bool`/`string`, arreglos, funciones/procedimientos, `and`/`or`/`not`, ámbitos, verificación de tipos). Lo que falta es el **backend (M2)**: generación TM para declaraciones, arreglos con índice dinámico, operadores lógicos, literales `string` en `write` y Activation Records para llamadas.
 
 Orden de prioridad acordado si falta tiempo: declaraciones tipadas → errores semánticos con número de línea → depurador paso a paso → arreglos → funciones con Activation Records.
 
 ## Git
 
 Ramas por módulo (`modulo-1` … `modulo-4`) e integración en `main`. El uso de Git es requisito evaluado del proyecto.
+
+- Conventional Commits. **Sin** `Co-Authored-By` ni atribución a IA en commits ni en PRs: los participantes del repo son solo los integrantes del equipo.
