@@ -39,20 +39,15 @@ public class Generador {
 		tablaSimbolos = tabla;
 	}
 	
+	/* Contrato D: stdout lleva SOLO el codigo .tm. Nada de cabeceras
+	 * decorativas: TM.C (readInstructions) rechaza toda linea que no sea
+	 * vacia, comentario '*' o instruccion 'N:' con "Bad location". */
 	public static void generarCodigoObjeto(NodoBase raiz){
-		System.out.println();
-		System.out.println();
-		System.out.println("------ CODIGO OBJETO DEL LENGUAJE TINY GENERADO PARA LA TM ------");
-		System.out.println();
-		System.out.println();
 		generarPreludioEstandar();
 		generar(raiz);
 		/*Genero el codigo de finalizacion de ejecucion del codigo*/   
 		UtGen.emitirComentario("Fin de la ejecucion.");
 		UtGen.emitirRO("HALT", 0, 0, 0, "");
-		System.out.println();
-		System.out.println();
-		System.out.println("------ FIN DEL CODIGO OBJETO DEL LENGUAJE TINY GENERADO PARA LA TM ------");
 	}
 	
 	//Funcion principal de generacion de codigo
@@ -75,8 +70,17 @@ public class Generador {
 			generarIdentificador(nodo);
 		}else if (nodo instanceof NodoOperacion){
 			generarOperacion(nodo);
+		}else if (nodo instanceof NodoBooleano){
+			generarBooleano(nodo);
+		}else if (nodo instanceof NodoDeclaracionArreglo){
+			/* Debe ir ANTES que NodoDeclaracion: hereda de ella */
+			generarDeclaracion(nodo);
+		}else if (nodo instanceof NodoDeclaracion){
+			generarDeclaracion(nodo);
 		}else{
-			System.out.println("BUG: Tipo de nodo a generar desconocido");
+			/* Como comentario y no como println: una linea sin '*' en stdout
+			 * romperia el .tm (Contrato D) */
+			UtGen.emitirComentario("BUG: Tipo de nodo a generar desconocido");
 		}
 		/*Si el hijo de extrema izquierda tiene hermano a la derecha lo genero tambien*/
 		if(nodo.TieneHermano())
@@ -175,8 +179,40 @@ public class Generador {
 		if(UtGen.debug)	UtGen.emitirComentario("-> identificador");
 	}
 
+	/* Las declaraciones no emiten instrucciones: la direccion ya la reservo
+	 * TablaSimbolos al analizar (globales desde dMem[0], igual que el Tiny
+	 * base) y la TM arranca con toda dMem en 0. */
+	private static void generarDeclaracion(NodoBase nodo){
+		NodoDeclaracion n = (NodoDeclaracion)nodo;
+		if(UtGen.debug)	UtGen.emitirComentario("declaracion: " + n.getNombre());
+	}
+
+	/* Un bool en la TM es un entero: true = 1, false = 0. Todas las
+	 * operaciones logicas y relacionales mantienen ese invariante. */
+	private static void generarBooleano(NodoBase nodo){
+		NodoBooleano n = (NodoBooleano)nodo;
+		int valor = n.getValor() ? 1 : 0;
+		if(UtGen.debug)	UtGen.emitirComentario("-> booleano");
+		UtGen.emitirRM("LDC", UtGen.AC, valor, 0, "cargar booleano: "+n.getValor());
+		if(UtGen.debug)	UtGen.emitirComentario("<- booleano");
+	}
+
+	/* 'not' es unario: el parser deja opDerecho == null a proposito, asi que
+	 * no se usa la pila temporal. Con el operando en {0,1}: AC = 1 - AC. */
+	private static void generarNegacion(NodoOperacion n){
+		if(UtGen.debug)	UtGen.emitirComentario("-> Operacion: no");
+		generar(n.getOpIzquierdo());
+		UtGen.emitirRM("LDC", UtGen.AC1, 1, 0, "op: not, cargo 1 en AC1");
+		UtGen.emitirRO("SUB", UtGen.AC, UtGen.AC1, UtGen.AC, "op: not (AC = 1 - AC)");
+		if(UtGen.debug)	UtGen.emitirComentario("<- Operacion: no");
+	}
+
 	private static void generarOperacion(NodoBase nodo){
 		NodoOperacion n = (NodoOperacion) nodo;
+		if(n.getOperacion() == tipoOp.no){
+			generarNegacion(n);
+			return;
+		}
 		if(UtGen.debug)	UtGen.emitirComentario("-> Operacion: " + n.getOperacion());
 		/* Genero la expresion izquierda de la operacion */
 		generar(n.getOpIzquierdo());
@@ -207,6 +243,15 @@ public class Generador {
 							UtGen.emitirRM("LDA", UtGen.PC, 1, UtGen.PC, "Salto incodicional a direccion: PC+1 (es falso evito colocarlo verdadero)");
 							UtGen.emitirRM("LDC", UtGen.AC, 1, UtGen.AC, "caso de verdadero (AC=1)");
 							break;	
+			/* and/or sin cortocircuito: ambos operandos ya estan evaluados.
+			 * Con operandos en {0,1}, and = producto. */
+			case	y:		UtGen.emitirRO("MUL", UtGen.AC, UtGen.AC1, UtGen.AC, "op: and");
+							break;
+			/* or = suma normalizada a {0,1}: si AC == 0 salta el LDC */
+			case	o:		UtGen.emitirRO("ADD", UtGen.AC, UtGen.AC1, UtGen.AC, "op: or");
+							UtGen.emitirRM("JEQ", UtGen.AC, 1, UtGen.PC, "or: si la suma es 0 el resultado es falso");
+							UtGen.emitirRM("LDC", UtGen.AC, 1, 0, "or: normalizo verdadero a 1");
+							break;
 			default:
 							UtGen.emitirComentario("BUG: tipo de operacion desconocida");
 		}
