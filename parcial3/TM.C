@@ -352,10 +352,11 @@ STEPRESULT stepTM (void)
     /***********************************/
       do
       { printf("Enter value for IN instruction: ") ;
-        fflush (stdin);
         fflush (stdout);
-        gets(in_Line);
-        lineLen = strlen(in_Line) ;
+        fgets(in_Line, LINESIZE, stdin);
+        lineLen = strlen(in_Line);
+        if (lineLen > 0 && in_Line[lineLen-1] == '\n')
+          in_Line[--lineLen] = '\0';
         inCol = 0;
         ok = getNum();
         if ( ! ok ) printf ("Illegal value\n");
@@ -405,10 +406,11 @@ int doCommand (void)
   int regNo, loc;
   do
   { printf ("Enter command: ");
-    fflush (stdin);
     fflush (stdout);
-    gets(in_Line);
+    fgets(in_Line, LINESIZE, stdin);
     lineLen = strlen(in_Line);
+    if (lineLen > 0 && in_Line[lineLen-1] == '\n')
+      in_Line[--lineLen] = '\0';
     inCol = 0;
   }
   while (! getWord ());
@@ -557,7 +559,7 @@ int doCommand (void)
 /* E X E C U T I O N   B E G I N S   H E R E */
 /********************************************/
 
-main( int argc, char * argv[] )
+int main( int argc, char * argv[] )
 { if (argc != 2)
   { printf("usage: %s <filename>\n",argv[0]);
     exit(1);

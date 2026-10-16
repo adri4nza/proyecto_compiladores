@@ -52,6 +52,9 @@ const CLASSES_DIR  = join(JAVA_PROJECT_PATH, 'out', 'production', 'Compiladores_
 const RUNTIME_JAR  = join(JAVA_PROJECT_PATH, 'src', 'especificacion', 'java-cup-11b-runtime.jar')
 const CLASSPATH    = `${CLASSES_DIR}:${RUNTIME_JAR}`
 const TM_BINARY    = resolve(__dirname, TM_BINARY_REL)
+// USE_REAL_TM=true requiere que Carlos haya agregado el modo servidor (-s) a TM.C.
+// Con false, el servidor usa el simulador mock aunque el binario exista.
+const USE_REAL_TM  = process.env.USE_REAL_TM === 'true'
 
 // Mock de estado para cuando el binario TM aún no existe
 const TM_MOCK_PATH = resolve(__dirname, '../interfaz-ide/src/data/estado_tm_mock.json')
@@ -258,19 +261,25 @@ io.on('connection', socket => {
 
     const instructions = parseTmInstructions(tm_code ?? '')
 
-    if (existsSync(TM_BINARY)) {
-      // ── Modo real: spawn TM.C ──────────────────────────────────────────
-      console.log(`[ws] ${socket.id} → usando binario real: ${TM_BINARY}`)
+    if (existsSync(TM_BINARY) && USE_REAL_TM) {
+      // ── Modo real: TM.C con soporte JSON por stdin/stdout (Carlos M3) ──
+      console.log(`[ws] ${socket.id} → modo REAL: ${TM_BINARY}`)
       const session = spawnRealTm(socket, instructions, tm_code)
       sessions.set(socket.id, session)
     } else {
       // ── Modo mock: simulador en memoria ───────────────────────────────
-      console.log(`[ws] ${socket.id} → TM binario no encontrado, usando mock`)
+      const reason = existsSync(TM_BINARY)
+        ? 'USE_REAL_TM=false en .env (modo servidor de Carlos pendiente)'
+        : 'binario TM no compilado aún'
+      console.log(`[ws] ${socket.id} → modo MOCK (${reason})`)
       const session = createMockSession(instructions)
       sessions.set(socket.id, session)
-      // Emitir estado inicial
       socket.emit('tm_state', session.getState())
-      socket.emit('tm_info', '⚠ Simulador en modo MOCK (binario TM no compilado aún). Conectando con Carlos (M3) cuando esté listo.')
+      socket.emit('tm_info',
+        existsSync(TM_BINARY)
+          ? '⚠ Binario TM encontrado pero en modo MOCK. Activa USE_REAL_TM=true en .env cuando Carlos implemente el modo -s.'
+          : '⚠ Simulador en modo MOCK — binario TM no encontrado.'
+      )
     }
   })
 
@@ -574,5 +583,9 @@ httpServer.listen(PORT, () => {
   console.log(`    WS   /         → socket.io (simulador TM)\n`)
   console.log(`    Java:      ${JAVA_BIN}`)
   console.log(`    Clases:    ${existsSync(CLASSES_DIR) ? '✅' : '❌ NO compiladas'}  ${CLASSES_DIR}`)
-  console.log(`    TM Binary: ${existsSync(TM_BINARY)   ? '✅ Real' : '⚠️  Mock (Carlos pendiente)'}  ${TM_BINARY}\n`)
+  const tmStatus = !existsSync(TM_BINARY) ? '❌ No compilado'
+    : USE_REAL_TM ? '✅ Real (modo -s)'
+    : '✅ Compilado — usando MOCK (USE_REAL_TM=false)'
+  console.log(`    TM Binary: ${tmStatus}`)
+  console.log(`               ${TM_BINARY}\n`)
 })
