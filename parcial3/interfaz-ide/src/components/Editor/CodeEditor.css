@@ -3,13 +3,14 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--bg0);
+  /* El fondo debe ser igual al del editor para evitar cualquier flash */
+  background: #07090a;
 }
 
 .code-editor-tab {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 0 12px;
   background: var(--bg1);
   border-bottom: 1px solid var(--border);
@@ -21,7 +22,13 @@
   font-size: 11px;
   color: var(--text2);
   padding: 3px 10px;
-  background: var(--bg0);
+  background: #07090a;
   border-top: 1px solid var(--amber);
   margin-top: -1px;
+}
+
+.tab-error-count {
+  font-size: 10px;
+  color: var(--red);
+  margin-left: auto;
 }

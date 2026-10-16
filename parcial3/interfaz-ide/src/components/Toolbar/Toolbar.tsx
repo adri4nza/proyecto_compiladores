@@ -4,6 +4,7 @@ interface ToolbarProps {
   isConnected:    boolean
   isHalted:       boolean
   isWaitingInput: boolean
+  isCompiling:    boolean
   onCompile: () => void
   onRun:     () => void
   onStep:    () => void
@@ -12,7 +13,7 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({
-  isConnected, isHalted, isWaitingInput,
+  isConnected, isHalted, isWaitingInput, isCompiling,
   onCompile, onRun, onStep, onStop, onReset,
 }: ToolbarProps) {
   const canExecute = !isHalted && !isWaitingInput
@@ -26,43 +27,18 @@ export default function Toolbar({
       <button
         className="tb-btn tb-btn--compile"
         onClick={onCompile}
+        disabled={isCompiling}
         title="Compilar código fuente Tiny++"
       >
-        ⚡ Compilar
+        {isCompiling ? '⏳ Compilando...' : '⚡ Compilar'}
       </button>
 
       <div className="toolbar-sep" />
 
-      <button
-        className="tb-btn tb-btn--go"
-        onClick={onRun}
-        disabled={!canExecute}
-        title="Ejecutar hasta HALT o breakpoint"
-      >
-        ▶ Run
-      </button>
-      <button
-        className="tb-btn tb-btn--step"
-        onClick={onStep}
-        disabled={!canExecute}
-        title="Ejecutar una instrucción TM"
-      >
-        ⏭ Step
-      </button>
-      <button
-        className="tb-btn tb-btn--stop"
-        onClick={onStop}
-        title="Detener ejecución"
-      >
-        ⏹ Stop
-      </button>
-      <button
-        className="tb-btn"
-        onClick={onReset}
-        title="Reiniciar simulador al estado inicial"
-      >
-        ↺ Reset
-      </button>
+      <button className="tb-btn tb-btn--go"   onClick={onRun}   disabled={!canExecute} title="Ejecutar hasta HALT o breakpoint">▶ Run</button>
+      <button className="tb-btn tb-btn--step" onClick={onStep}  disabled={!canExecute} title="Ejecutar una instrucción TM">⏭ Step</button>
+      <button className="tb-btn tb-btn--stop" onClick={onStop}  title="Detener ejecución">⏹ Stop</button>
+      <button className="tb-btn"              onClick={onReset} title="Reiniciar simulador">↺ Reset</button>
 
       <div className="toolbar-spacer" />
 
