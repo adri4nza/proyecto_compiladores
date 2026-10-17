@@ -48,7 +48,8 @@ parcial3/
 Lee la sección "Traspaso al Modulo 2" y la tabla "Alerta de integración" de `parcial3/modulo_1/PLAN_MODULO_1.md`. Resumen:
 
 - **Resuelto en `modulo-2`:** Deuda A (cabeceras en stdout) y Deuda B (NPE del `not` unario, faltaban `case y/o`). `bool` se representa como entero 0/1: `not` = `1 - AC`, `and` = `MUL`, `or` = `ADD` normalizado; sin cortocircuito. Las declaraciones no emiten código (la dirección ya la asignó la tabla).
-- **Pendiente:** `Generador.generar` todavía no conoce `NodoAccesoArreglo`, `NodoFuncion`, `NodoProcedimiento`, `NodoLlamada`, `NodoRetorno` ni `NodoString` (caen en un comentario `BUG`, que con `UtGen.debug=false` no se imprime: `write "fin"` se pierde en silencio). Las asignaciones/lecturas indexadas tampoco están generadas. **Chequear `NodoDeclaracionArreglo` antes que `NodoDeclaracion`** (hereda de ella).
+- **Arreglos globales generados:** celda = `base + indice + GP`; el índice se calcula en AC (`ADD AC,AC,GP`) y `LD`/`ST` usan la base como desplazamiento. Sin chequeo de límites. Las direcciones salen de `nodo.getRegistro()`.
+- **Pendiente:** `NodoFuncion`, `NodoProcedimiento`, `NodoLlamada`, `NodoRetorno` y `NodoString` (caen en un comentario `BUG`, que con `UtGen.debug=false` no se imprime: `write "fin"` se pierde en silencio). **Chequear `NodoDeclaracionArreglo` antes que `NodoDeclaracion`** (hereda de ella).
 - `NodoAsignacion` / `NodoLeer` tienen `indice` (`esIndexada()`) para `A[i] := e` y `read A[i]`.
 - Resolver direcciones con `nodo.getRegistro()` (anotado por el semántico; sobrevive al cierre de ámbitos), no con `getDireccion(String)`. `RegistroSimbolo` trae `tipo`, `categoria`, `tamano`, `nivel`, `esGlobal`, `desplazamiento`, `parametros`.
 - Globales: direcciones desde 0 (igual que el base). Locales/parámetros: `desplazamiento` desde 0 dentro del marco. `FP = reg[4]` reservado para los Activation Records.
@@ -56,7 +57,7 @@ Lee la sección "Traspaso al Modulo 2" y la tabla "Alerta de integración" de `p
 - Ancla de regresión: `tinypp/07_factorial_tpp.tny` genera 41 instrucciones idénticas al Tiny original; no debe moverse salvo por las cabeceras eliminadas.
 - `pruebas_m1.sh` está en 68/68 con `DEUDA_CONOCIDA` vacía. Si se agrega deuda nueva y luego se arregla, la suite la reporta `RESUELTO` y **falla a propósito** hasta borrar la entrada.
 
-No hay README ni reglas de Cursor/Copilot. La verificación automatizada es `bash parcial3/modulo_1/pruebas_m1.sh` (pensada para WSL: en Git Bash de Windows falla si la ruta tiene espacios y porque el classpath usa `:`).
+No hay README ni reglas de Cursor/Copilot. La verificación automatizada es `bash parcial3/modulo_2/pruebas_m2.sh` (compila cada caso, **ejecuta** el `.tm` en el intérprete de referencia `tm_ref.py` y compara las salidas de `OUT`; corre en WSL y en Git Bash) y `bash parcial3/modulo_1/pruebas_m1.sh` (pensada para WSL: en Git Bash de Windows falla si la ruta tiene espacios y porque el classpath usa `:`).
 
 Los directorios `out/` y los `.class` están versionados en git y no hay `.gitignore` propio. Al compilar desde terminal usa un directorio de salida fuera del repo o añade un `.gitignore` antes de hacer commit.
 

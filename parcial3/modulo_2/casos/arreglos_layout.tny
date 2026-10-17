@@ -1,0 +1,27 @@
+{ Caso M2: arreglos globales en tiempo de ejecucion.
+  - el arreglo no pisa a las variables declaradas antes y despues
+  - indices calculados (i*i, indice que es a su vez un elemento)
+  - read y write sobre elementos
+  Entrada: 100   Salida: 16 9 4 1 0 11 22 99 109 }
+int a;
+int V[5];
+int b;
+int i;
+a := 11;
+b := 22;
+i := 0;
+repeat
+  V[i] := i * i;
+  i := i + 1
+until i = 5;
+i := 4;
+repeat
+  write V[i];
+  i := i - 1
+until i < 0;
+write a;
+write b;
+V[V[2]] := 99;
+write V[4];
+read V[1];
+write V[1] + V[3]

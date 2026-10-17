@@ -72,6 +72,8 @@ public class Generador {
 			generarOperacion(nodo);
 		}else if (nodo instanceof NodoBooleano){
 			generarBooleano(nodo);
+		}else if (nodo instanceof NodoAccesoArreglo){
+			generarAccesoArreglo(nodo);
 		}else if (nodo instanceof NodoDeclaracionArreglo){
 			/* Debe ir ANTES que NodoDeclaracion: hereda de ella */
 			generarDeclaracion(nodo);
@@ -137,9 +139,18 @@ public class Generador {
 		if(UtGen.debug)	UtGen.emitirComentario("-> asignacion");		
 		/* Genero el codigo para la expresion a la derecha de la asignacion */
 		generar(n.getExpresion());
-		/* Ahora almaceno el valor resultante */
-		direccion = tablaSimbolos.getDireccion(n.getIdentificador());
-		UtGen.emitirRM("ST", UtGen.AC, direccion, UtGen.GP, "asignacion: almaceno el valor para el id "+n.getIdentificador());
+		direccion = direccionDe(n, n.getIdentificador());
+		if(n.esIndexada()){
+			/* A[i] := e. El valor queda en la pila temporal mientras se
+			 * calcula el indice, que puede usar AC a su antojo */
+			UtGen.emitirRM("ST", UtGen.AC, desplazamientoTmp--, UtGen.MP, "asignacion: push en la pila tmp el valor a asignar");
+			generarDesplazamientoIndice(n.getIndice());
+			UtGen.emitirRM("LD", UtGen.AC1, ++desplazamientoTmp, UtGen.MP, "asignacion: pop del valor a asignar en AC1");
+			UtGen.emitirRM("ST", UtGen.AC1, direccion, UtGen.AC, "asignacion: almaceno el valor en "+n.getIdentificador()+"[indice]");
+		}else{
+			/* Ahora almaceno el valor resultante */
+			UtGen.emitirRM("ST", UtGen.AC, direccion, UtGen.GP, "asignacion: almaceno el valor para el id "+n.getIdentificador());
+		}
 		if(UtGen.debug)	UtGen.emitirComentario("<- asignacion");
 	}
 	
@@ -147,9 +158,16 @@ public class Generador {
 		NodoLeer n = (NodoLeer)nodo;
 		int direccion;
 		if(UtGen.debug)	UtGen.emitirComentario("-> leer");
-		UtGen.emitirRO("IN", UtGen.AC, 0, 0, "leer: lee un valor entero ");
-		direccion = tablaSimbolos.getDireccion(n.getIdentificador());
-		UtGen.emitirRM("ST", UtGen.AC, direccion, UtGen.GP, "leer: almaceno el valor entero leido en el id "+n.getIdentificador());
+		direccion = direccionDe(n, n.getIdentificador());
+		if(n.esIndexada()){
+			/* read A[i]: primero el indice (ocupa AC), luego IN en AC1 */
+			generarDesplazamientoIndice(n.getIndice());
+			UtGen.emitirRO("IN", UtGen.AC1, 0, 0, "leer: lee un valor entero ");
+			UtGen.emitirRM("ST", UtGen.AC1, direccion, UtGen.AC, "leer: almaceno el valor entero leido en "+n.getIdentificador()+"[indice]");
+		}else{
+			UtGen.emitirRO("IN", UtGen.AC, 0, 0, "leer: lee un valor entero ");
+			UtGen.emitirRM("ST", UtGen.AC, direccion, UtGen.GP, "leer: almaceno el valor entero leido en el id "+n.getIdentificador());
+		}
 		if(UtGen.debug)	UtGen.emitirComentario("<- leer");
 	}
 	
@@ -174,9 +192,39 @@ public class Generador {
 		NodoIdentificador n = (NodoIdentificador)nodo;
 		int direccion;
 		if(UtGen.debug)	UtGen.emitirComentario("-> identificador");
-		direccion = tablaSimbolos.getDireccion(n.getNombre());
+		direccion = direccionDe(n, n.getNombre());
 		UtGen.emitirRM("LD", UtGen.AC, direccion, UtGen.GP, "cargar valor de identificador: "+n.getNombre());
 		if(UtGen.debug)	UtGen.emitirComentario("-> identificador");
+	}
+
+	/* Direccion base de un simbolo. Primero el RegistroSimbolo que anoto el
+	 * semantico: resuelve el sombreado de ambitos y sigue valido aunque el
+	 * ambito ya se haya cerrado. getDireccion(String) solo ve lo que siga
+	 * abierto en la pila, y queda como respaldo. */
+	private static int direccionDe(NodoBase nodo, String nombre){
+		RegistroSimbolo r = nodo.getRegistro();
+		if(r != null)
+			return r.getDireccionMemoria();
+		return tablaSimbolos.getDireccion(nombre);
+	}
+
+	/* Deja en AC el desplazamiento absoluto de un elemento: indice + GP.
+	 * La celda es entonces base(AC), con la base del arreglo como
+	 * desplazamiento constante de la instruccion LD/ST.
+	 * Sin chequeo de limites: la TM solo detecta DMEM_ERR fuera de dMem. */
+	private static void generarDesplazamientoIndice(NodoBase indice){
+		generar(indice);
+		UtGen.emitirRO("ADD", UtGen.AC, UtGen.AC, UtGen.GP, "arreglo: AC = indice + GP");
+	}
+
+	/* A[i] dentro de una expresion: AC = dMem[base + i + GP] */
+	private static void generarAccesoArreglo(NodoBase nodo){
+		NodoAccesoArreglo n = (NodoAccesoArreglo)nodo;
+		int base = direccionDe(n, n.getNombre());
+		if(UtGen.debug)	UtGen.emitirComentario("-> acceso arreglo "+n.getNombre());
+		generarDesplazamientoIndice(n.getIndice());
+		UtGen.emitirRM("LD", UtGen.AC, base, UtGen.AC, "arreglo: cargo "+n.getNombre()+"[indice]");
+		if(UtGen.debug)	UtGen.emitirComentario("<- acceso arreglo "+n.getNombre());
 	}
 
 	/* Las declaraciones no emiten instrucciones: la direccion ya la reservo
