@@ -79,6 +79,31 @@ El preludio del programa inicializa esas celdas (`LDC` + `ST`) antes de la prime
 
 ---
 
+## Funciones y procedimientos: Activation Records
+
+El generador usa **`reg[4]` como `FP`** (frame pointer). El JSON del Contrato A ya tiene la clave `FP`: M3 solo debe mapearla a `reg[4]`. Cada llamada arma un marco en la memoria de datos, debajo de los temporales vivos del llamador, y el marco crece hacia abajo desde `FP`:
+
+```
+dMem[FP]          dirección de retorno
+dMem[FP - 1]      FP del llamador
+dMem[FP - 2]      MP del llamador
+dMem[FP - 3]      parámetro/local con desplazamiento 0
+dMem[FP - 4]      parámetro/local con desplazamiento 1
+...
+                  <- MP del llamado: sus temporales empiezan aquí
+```
+
+- **Valor de retorno:** viaja en `AC`.
+- **Llamada:** argumentos al marco → `ST FP` / `ST MP` del llamador → `LDA FP` / `LDA MP` del llamado → `LDA AC1,2(PC)` + `ST AC1,0(FP)` (dirección de retorno) → salto con `LDA PC`.
+- **Retorno:** `LD AC1,0(FP)` → `LD MP,-2(FP)` → `LD FP,-1(FP)` → `LDA PC,0(AC1)`.
+- **Recursión:** funciona, porque cada llamada tiene su propio marco (caso `casos/recursion.tny`).
+- **Arreglos locales:** ocupan celdas contiguas del marco, con el elemento 0 en la dirección más baja.
+- **No soportado todavía:** pasar arreglos como parámetro (`int V[]`), y que una rutina anidada lea locales de la rutina que la contiene (haría falta un enlace estático).
+
+Para M4, en el depurador:
+- Durante una llamada, `FP` y `MP` bajan, y el marco se ve en la parte alta de `dMem` (cerca de 1023).
+- Al volver, ambos registros recuperan su valor.
+
 ## Otros cambios del generador que conviene conocer
 
 | Cambio | Efecto para M3/M4 |

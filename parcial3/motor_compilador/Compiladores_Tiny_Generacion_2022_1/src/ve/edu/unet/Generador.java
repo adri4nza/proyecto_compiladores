@@ -42,6 +42,32 @@ public class Generador {
 	 * Un literal repetido reutiliza la misma reserva. */
 	private static java.util.LinkedHashMap<String, Integer> cadenas =
 			new java.util.LinkedHashMap<String, Integer>();
+
+	/* Activation Record (marco) de una funcion o procedimiento. Crece hacia
+	 * abajo desde FP, igual que la pila temporal:
+	 *
+	 * |dir. de retorno |<- FP + 0
+	 * |FP anterior     |<- FP - 1
+	 * |MP anterior     |<- FP - 2
+	 * |param/local d=0 |<- FP - 3
+	 * |param/local d=1 |<- FP - 4
+	 * |...             |
+	 * |                |<- MP del llamado (sus temporales empiezan aqui)
+	 *
+	 * Cada parametro o local ocupa su 'desplazamiento' (lo asigna
+	 * TablaSimbolos desde 0). Un arreglo local de n celdas con
+	 * desplazamiento d ocupa FP-3-d .. FP-3-d-(n-1), con el elemento 0 en
+	 * la direccion mas baja para indexarlo igual que a los globales.
+	 * El valor de retorno viaja en AC. */
+	private static final int CABECERA_MARCO = 3;
+	private static java.util.HashMap<String, Integer> tamanoMarco =
+			new java.util.HashMap<String, Integer>();
+	private static java.util.HashMap<String, Integer> entradaRutina =
+			new java.util.HashMap<String, Integer>();
+	/* Llamadas emitidas antes que la rutina (llamadas hacia adelante):
+	 * hueco reservado a la espera de conocer la direccion de entrada */
+	private static java.util.HashMap<String, java.util.List<Integer>> saltosPendientes =
+			new java.util.HashMap<String, java.util.List<Integer>>();
 	
 	public static void setTablaSimbolos(TablaSimbolos tabla){
 		tablaSimbolos = tabla;
@@ -53,6 +79,10 @@ public class Generador {
 	public static void generarCodigoObjeto(NodoBase raiz){
 		generarPreludioEstandar();
 		reservarCadenas(raiz);
+		tamanoMarco.clear();
+		entradaRutina.clear();
+		saltosPendientes.clear();
+		calcularMarcos(raiz);
 		generar(raiz);
 		/*Genero el codigo de finalizacion de ejecucion del codigo*/   
 		UtGen.emitirComentario("Fin de la ejecucion.");
@@ -83,6 +113,16 @@ public class Generador {
 			generarBooleano(nodo);
 		}else if (nodo instanceof NodoAccesoArreglo){
 			generarAccesoArreglo(nodo);
+		}else if (nodo instanceof NodoFuncion){
+			NodoFuncion f = (NodoFuncion)nodo;
+			generarRutina(f.getNombre(), f.getCuerpo());
+		}else if (nodo instanceof NodoProcedimiento){
+			NodoProcedimiento p = (NodoProcedimiento)nodo;
+			generarRutina(p.getNombre(), p.getCuerpo());
+		}else if (nodo instanceof NodoLlamada){
+			generarLlamada((NodoLlamada)nodo);
+		}else if (nodo instanceof NodoRetorno){
+			generarRetorno((NodoRetorno)nodo);
 		}else if (nodo instanceof NodoDeclaracionArreglo){
 			/* Debe ir ANTES que NodoDeclaracion: hereda de ella */
 			generarDeclaracion(nodo);
@@ -155,16 +195,17 @@ public class Generador {
 		/* Genero el codigo para la expresion a la derecha de la asignacion */
 		generar(n.getExpresion());
 		direccion = direccionDe(n, n.getIdentificador());
+		int base = registroBase(n);
 		if(n.esIndexada()){
 			/* A[i] := e. El valor queda en la pila temporal mientras se
 			 * calcula el indice, que puede usar AC a su antojo */
 			UtGen.emitirRM("ST", UtGen.AC, desplazamientoTmp--, UtGen.MP, "asignacion: push en la pila tmp el valor a asignar");
-			generarDesplazamientoIndice(n.getIndice());
+			generarDesplazamientoIndice(n.getIndice(), base);
 			UtGen.emitirRM("LD", UtGen.AC1, ++desplazamientoTmp, UtGen.MP, "asignacion: pop del valor a asignar en AC1");
 			UtGen.emitirRM("ST", UtGen.AC1, direccion, UtGen.AC, "asignacion: almaceno el valor en "+n.getIdentificador()+"[indice]");
 		}else{
 			/* Ahora almaceno el valor resultante */
-			UtGen.emitirRM("ST", UtGen.AC, direccion, UtGen.GP, "asignacion: almaceno el valor para el id "+n.getIdentificador());
+			UtGen.emitirRM("ST", UtGen.AC, direccion, base, "asignacion: almaceno el valor para el id "+n.getIdentificador());
 		}
 		if(UtGen.debug)	UtGen.emitirComentario("<- asignacion");
 	}
@@ -174,14 +215,15 @@ public class Generador {
 		int direccion;
 		if(UtGen.debug)	UtGen.emitirComentario("-> leer");
 		direccion = direccionDe(n, n.getIdentificador());
+		int base = registroBase(n);
 		if(n.esIndexada()){
 			/* read A[i]: primero el indice (ocupa AC), luego IN en AC1 */
-			generarDesplazamientoIndice(n.getIndice());
+			generarDesplazamientoIndice(n.getIndice(), base);
 			UtGen.emitirRO("IN", UtGen.AC1, 0, 0, "leer: lee un valor entero ");
 			UtGen.emitirRM("ST", UtGen.AC1, direccion, UtGen.AC, "leer: almaceno el valor entero leido en "+n.getIdentificador()+"[indice]");
 		}else{
 			UtGen.emitirRO("IN", UtGen.AC, 0, 0, "leer: lee un valor entero ");
-			UtGen.emitirRM("ST", UtGen.AC, direccion, UtGen.GP, "leer: almaceno el valor entero leido en el id "+n.getIdentificador());
+			UtGen.emitirRM("ST", UtGen.AC, direccion, base, "leer: almaceno el valor entero leido en el id "+n.getIdentificador());
 		}
 		if(UtGen.debug)	UtGen.emitirComentario("<- leer");
 	}
@@ -213,7 +255,7 @@ public class Generador {
 		int direccion;
 		if(UtGen.debug)	UtGen.emitirComentario("-> identificador");
 		direccion = direccionDe(n, n.getNombre());
-		UtGen.emitirRM("LD", UtGen.AC, direccion, UtGen.GP, "cargar valor de identificador: "+n.getNombre());
+		UtGen.emitirRM("LD", UtGen.AC, direccion, registroBase(n), "cargar valor de identificador: "+n.getNombre());
 		if(UtGen.debug)	UtGen.emitirComentario("-> identificador");
 	}
 
@@ -223,26 +265,40 @@ public class Generador {
 	 * abierto en la pila, y queda como respaldo. */
 	private static int direccionDe(NodoBase nodo, String nombre){
 		RegistroSimbolo r = nodo.getRegistro();
-		if(r != null)
-			return r.getDireccionMemoria();
+		if(r != null){
+			if(r.esGlobal())
+				return r.getDireccionMemoria();
+			/* Local o parametro: desplazamiento (negativo) respecto de FP */
+			int tamano = Math.max(r.getTamano(), 1);
+			return -(CABECERA_MARCO + r.getDesplazamiento() + tamano - 1);
+		}
 		return tablaSimbolos.getDireccion(nombre);
 	}
 
-	/* Deja en AC el desplazamiento absoluto de un elemento: indice + GP.
-	 * La celda es entonces base(AC), con la base del arreglo como
-	 * desplazamiento constante de la instruccion LD/ST.
-	 * Sin chequeo de limites: la TM solo detecta DMEM_ERR fuera de dMem. */
-	private static void generarDesplazamientoIndice(NodoBase indice){
-		generar(indice);
-		UtGen.emitirRO("ADD", UtGen.AC, UtGen.AC, UtGen.GP, "arreglo: AC = indice + GP");
+	/* Registro base de la direccion que devuelve direccionDe: GP para los
+	 * globales, FP para locales y parametros (viven en el marco). */
+	private static int registroBase(NodoBase nodo){
+		RegistroSimbolo r = nodo.getRegistro();
+		if(r != null && !r.esGlobal())
+			return UtGen.FP;
+		return UtGen.GP;
 	}
 
-	/* A[i] dentro de una expresion: AC = dMem[base + i + GP] */
+	/* Deja en AC el desplazamiento absoluto de un elemento: indice + base
+	 * (GP o FP). La celda es entonces dir(AC), con la direccion del
+	 * arreglo como desplazamiento constante de la instruccion LD/ST.
+	 * Sin chequeo de limites: la TM solo detecta DMEM_ERR fuera de dMem. */
+	private static void generarDesplazamientoIndice(NodoBase indice, int registroBase){
+		generar(indice);
+		UtGen.emitirRO("ADD", UtGen.AC, UtGen.AC, registroBase, "arreglo: AC = indice + registro base");
+	}
+
+	/* A[i] dentro de una expresion: AC = dMem[dir + i + base] */
 	private static void generarAccesoArreglo(NodoBase nodo){
 		NodoAccesoArreglo n = (NodoAccesoArreglo)nodo;
 		int base = direccionDe(n, n.getNombre());
 		if(UtGen.debug)	UtGen.emitirComentario("-> acceso arreglo "+n.getNombre());
-		generarDesplazamientoIndice(n.getIndice());
+		generarDesplazamientoIndice(n.getIndice(), registroBase(n));
 		UtGen.emitirRM("LD", UtGen.AC, base, UtGen.AC, "arreglo: cargo "+n.getNombre()+"[indice]");
 		if(UtGen.debug)	UtGen.emitirComentario("<- acceso arreglo "+n.getNombre());
 	}
@@ -298,6 +354,151 @@ public class Generador {
 			UtGen.emitirRM("LD", UtGen.AC, base + 1 + i, UtGen.GP, "escribir: cargo el caracter "+literal.charAt(i));
 			UtGen.emitirRO("OUTC", UtGen.AC, 0, 0, "escribir: salida del caracter");
 		}
+	}
+
+	/* Tamano del marco de cada rutina: cabecera + las celdas que ocupan sus
+	 * parametros y locales. Se calcula antes de generar porque una llamada
+	 * puede aparecer antes que la rutina (llamada hacia adelante). */
+	private static void calcularMarcos(NodoBase nodo){
+		for(NodoBase n = nodo; n != null; n = n.getHermanoDerecha()){
+			if(n instanceof NodoFuncion){
+				NodoFuncion f = (NodoFuncion)n;
+				registrarMarco(f.getNombre(), f.getParametros(), f.getCuerpo());
+				calcularMarcos(f.getCuerpo());
+			}else if(n instanceof NodoProcedimiento){
+				NodoProcedimiento p = (NodoProcedimiento)n;
+				registrarMarco(p.getNombre(), p.getParametros(), p.getCuerpo());
+				calcularMarcos(p.getCuerpo());
+			}else if(n instanceof NodoIf){
+				calcularMarcos(((NodoIf)n).getParteThen());
+				calcularMarcos(((NodoIf)n).getParteElse());
+			}else if(n instanceof NodoRepeat){
+				calcularMarcos(((NodoRepeat)n).getCuerpo());
+			}
+		}
+	}
+
+	private static void registrarMarco(String nombre, java.util.List<NodoDeclaracion> parametros, NodoBase cuerpo){
+		int celdas = 0;
+		if(parametros != null)
+			for(NodoDeclaracion d : parametros)
+				celdas = Math.max(celdas, finDeCeldas(d));
+		celdas = Math.max(celdas, celdasLocales(cuerpo));
+		tamanoMarco.put(nombre, CABECERA_MARCO + celdas);
+	}
+
+	/* Mayor (desplazamiento + tamano) entre las declaraciones del cuerpo,
+	 * sin entrar en rutinas anidadas: esas tienen su propio marco. */
+	private static int celdasLocales(NodoBase nodo){
+		int celdas = 0;
+		for(NodoBase n = nodo; n != null; n = n.getHermanoDerecha()){
+			if(n instanceof NodoDeclaracion){
+				celdas = Math.max(celdas, finDeCeldas((NodoDeclaracion)n));
+			}else if(n instanceof NodoIf){
+				celdas = Math.max(celdas, celdasLocales(((NodoIf)n).getParteThen()));
+				celdas = Math.max(celdas, celdasLocales(((NodoIf)n).getParteElse()));
+			}else if(n instanceof NodoRepeat){
+				celdas = Math.max(celdas, celdasLocales(((NodoRepeat)n).getCuerpo()));
+			}
+		}
+		return celdas;
+	}
+
+	private static int finDeCeldas(NodoDeclaracion d){
+		RegistroSimbolo r = d.getRegistro();
+		if(r == null || r.esGlobal())
+			return 0;
+		return r.getDesplazamiento() + Math.max(r.getTamano(), 1);
+	}
+
+	/* Cuerpo de una funcion o procedimiento. El flujo principal salta por
+	 * encima: la rutina solo se ejecuta cuando alguien la llama. */
+	private static void generarRutina(String nombre, NodoBase cuerpo){
+		if(UtGen.debug)	UtGen.emitirComentario("-> rutina "+nombre+" (marco de "+tamanoMarco.get(nombre)+" celdas)");
+		int saltoSobreRutina = UtGen.emitirSalto(1);
+		int entrada = UtGen.emitirSalto(0);
+		entradaRutina.put(nombre, entrada);
+		/* Completo las llamadas hacia adelante que esperaban esta entrada */
+		java.util.List<Integer> pendientes = saltosPendientes.remove(nombre);
+		if(pendientes != null){
+			for(int salto : pendientes){
+				UtGen.cargarRespaldo(salto);
+				UtGen.emitirRM_Abs("LDA", UtGen.PC, entrada, "llamada: salto a "+nombre);
+			}
+			UtGen.restaurarRespaldo();
+		}
+		/* Los temporales del llamado empiezan en su propio MP */
+		int tmpPrevio = desplazamientoTmp;
+		desplazamientoTmp = 0;
+		if(cuerpo != null)
+			generar(cuerpo);
+		/* Fin del cuerpo sin return (procedimientos): retorno implicito */
+		generarEpilogo(nombre);
+		desplazamientoTmp = tmpPrevio;
+		int fin = UtGen.emitirSalto(0);
+		UtGen.cargarRespaldo(saltoSobreRutina);
+		UtGen.emitirRM_Abs("LDA", UtGen.PC, fin, "salto sobre el cuerpo de "+nombre);
+		UtGen.restaurarRespaldo();
+		if(UtGen.debug)	UtGen.emitirComentario("<- rutina "+nombre);
+	}
+
+	/* Deshace el marco y vuelve al llamador. AC no se toca: lleva el valor
+	 * de retorno de las funciones. */
+	private static void generarEpilogo(String nombre){
+		UtGen.emitirRM("LD", UtGen.AC1, 0, UtGen.FP, "retorno: AC1 = direccion de retorno de "+nombre);
+		UtGen.emitirRM("LD", UtGen.MP, -2, UtGen.FP, "retorno: restauro MP del llamador");
+		UtGen.emitirRM("LD", UtGen.FP, -1, UtGen.FP, "retorno: restauro FP del llamador");
+		UtGen.emitirRM("LDA", UtGen.PC, 0, UtGen.AC1, "retorno: salto de vuelta al llamador");
+	}
+
+	private static void generarRetorno(NodoRetorno n){
+		if(n.getExpresion() != null)
+			generar(n.getExpresion());   /* valor de retorno en AC */
+		generarEpilogo("return");
+	}
+
+	/* Llamada a funcion o procedimiento. El marco se arma debajo de los
+	 * temporales vivos del llamador (desplazamientoTmp), asi que una
+	 * llamada dentro de una expresion no pisa operandos ya apilados:
+	 *   1. reservo el marco moviendo desplazamientoTmp; los temporales que
+	 *      usen los argumentos quedan por debajo del marco
+	 *   2. evaluo cada argumento y lo guardo en la celda de su parametro
+	 *   3. guardo FP y MP del llamador, fijo FP y MP del llamado
+	 *   4. guardo la direccion de retorno y salto a la rutina */
+	private static void generarLlamada(NodoLlamada n){
+		String nombre = n.getNombre();
+		RegistroSimbolo firma = n.getRegistro();
+		int tamano = tamanoMarco.get(nombre);
+		int tope = desplazamientoTmp;          /* FP del llamado = MP + tope */
+		if(UtGen.debug)	UtGen.emitirComentario("-> llamada "+nombre);
+		desplazamientoTmp -= tamano;
+
+		java.util.List<NodoBase> argumentos = n.getArgumentos();
+		for(int i = 0; i < argumentos.size(); i++){
+			RegistroSimbolo formal = firma.getParametros().get(i);
+			generar(argumentos.get(i));
+			UtGen.emitirRM("ST", UtGen.AC, tope - CABECERA_MARCO - formal.getDesplazamiento(), UtGen.MP,
+					"llamada: argumento "+(i+1)+" -> "+formal.getIdentificador());
+		}
+
+		UtGen.emitirRM("ST", UtGen.FP, tope - 1, UtGen.MP, "llamada: guardo FP del llamador");
+		UtGen.emitirRM("ST", UtGen.MP, tope - 2, UtGen.MP, "llamada: guardo MP del llamador");
+		UtGen.emitirRM("LDA", UtGen.FP, tope, UtGen.MP, "llamada: FP apunta al nuevo marco");
+		UtGen.emitirRM("LDA", UtGen.MP, tope - tamano, UtGen.MP, "llamada: MP debajo del marco");
+		UtGen.emitirRM("LDA", UtGen.AC1, 2, UtGen.PC, "llamada: AC1 = direccion de retorno");
+		UtGen.emitirRM("ST", UtGen.AC1, 0, UtGen.FP, "llamada: guardo la direccion de retorno");
+		Integer entrada = entradaRutina.get(nombre);
+		if(entrada != null){
+			UtGen.emitirRM_Abs("LDA", UtGen.PC, entrada, "llamada: salto a "+nombre);
+		}else{
+			int salto = UtGen.emitirSalto(1);
+			UtGen.emitirComentario("llamada: salto a "+nombre+" (se completa al generar la rutina)");
+			if(!saltosPendientes.containsKey(nombre))
+				saltosPendientes.put(nombre, new java.util.ArrayList<Integer>());
+			saltosPendientes.get(nombre).add(salto);
+		}
+		desplazamientoTmp = tope;
+		if(UtGen.debug)	UtGen.emitirComentario("<- llamada "+nombre);
 	}
 
 	/* Las declaraciones no emiten instrucciones: la direccion ya la reservo
