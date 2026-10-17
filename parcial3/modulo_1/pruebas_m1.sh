@@ -92,9 +92,7 @@ CASOS_ERROR=(
 # Texto que se le muestra al responsable del otro modulo, con la ubicacion
 # EXACTA del codigo a arreglar para que no tenga que investigar nada.
 # ---------------------------------------------------------------------------
-MOTIVO_CABECERAS="Generador.java:45 y Generador.java:55 imprimen por stdout las cabeceras decorativas '------ CODIGO OBJETO ... ------', que violan el Contrato D (stdout = solo el .tm). Arreglo: borrar esos dos System.out.println y los System.out.println() vacios que los rodean."
-
-MOTIVO_NOT_UNARIO="Generador.java:186 llama generar(n.getOpDerecho()) sin chequear null, pero la produccion 'exp_not ::= NOT exp_not' construye un NodoOperacion con opDerecho == null A PROPOSITO (not es unario), asi que revienta con NullPointerException. Faltan ademas los 'case y:', 'case o:' y 'case no:' en el switch de generarOperacion. Repro minimo: 'bool f;' / 'f := not false'."
+# (sin deuda abierta)
 
 # ---------------------------------------------------------------------------
 # TABLA DE DEUDA CONOCIDA DE OTROS MODULOS
@@ -117,18 +115,7 @@ MOTIVO_NOT_UNARIO="Generador.java:186 llama generar(n.getOpDerecho()) sin cheque
 #   en los 20 casos; lo que falla es la generacion de codigo (Modulo 2).
 # ---------------------------------------------------------------------------
 DEUDA_CONOCIDA=(
-# --- Deuda A: cabeceras decorativas contaminando el .tm (los 7 validos) ---
-"01_declaraciones_ok.tny  | stdout-sin-cabeceras | M2 | $MOTIVO_CABECERAS"
-"02_arreglos_ok.tny       | stdout-sin-cabeceras | M2 | $MOTIVO_CABECERAS"
-"03_funciones_ok.tny      | stdout-sin-cabeceras | M2 | $MOTIVO_CABECERAS"
-"04_procedimientos_ok.tny | stdout-sin-cabeceras | M2 | $MOTIVO_CABECERAS"
-"05_booleanos_ok.tny      | stdout-sin-cabeceras | M2 | $MOTIVO_CABECERAS"
-"06_scopes_ok.tny         | stdout-sin-cabeceras | M2 | $MOTIVO_CABECERAS"
-"07_factorial_tpp.tny     | stdout-sin-cabeceras | M2 | $MOTIVO_CABECERAS"
-# --- Deuda B: NullPointerException con el operador unario 'not' ---
-"05_booleanos_ok.tny      | stderr-json          | M2 | $MOTIVO_NOT_UNARIO"
-"05_booleanos_ok.tny      | exit                 | M2 | $MOTIVO_NOT_UNARIO"
-"05_booleanos_ok.tny      | stderr-vacio         | M2 | $MOTIVO_NOT_UNARIO"
+# (vacia) Deuda A y Deuda B de M2 resueltas en la rama modulo-2.
 )
 
 # ---------------------------------------------------------------------------

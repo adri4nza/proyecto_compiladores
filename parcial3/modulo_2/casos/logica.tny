@@ -1,0 +1,16 @@
+{ Caso M2: valores de not, and, or observados por OUT (bool = 0/1).
+  Entradas x y: 0 o 1; a = (x = 1), b = (y = 1).
+  Salida: not a, a and b, a or b, (not a and b) or a, not not b }
+int x;
+int y;
+bool a;
+bool b;
+read x;
+read y;
+a := x = 1;
+b := y = 1;
+write not a;
+write a and b;
+write a or b;
+write not a and b or a;
+write not not b

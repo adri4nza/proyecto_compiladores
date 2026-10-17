@@ -32,6 +32,9 @@ public class UtGen {
 
 	/* Defino al registro[1] como el acumulador 2 */
 	public static int  AC1=1;
+	/* fp = "frame pointer", registro[4]: base del Activation Record de la
+	 * funcion o procedimiento en ejecucion (ver Generador.generarLlamada) */
+	public static int  FP=4;
 	
 	
 	public static void emitirComentario(String c){
