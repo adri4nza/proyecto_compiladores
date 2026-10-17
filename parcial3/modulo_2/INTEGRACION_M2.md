@@ -98,7 +98,8 @@ dMem[FP - 4]      parámetro/local con desplazamiento 1
 - **Retorno:** `LD AC1,0(FP)` → `LD MP,-2(FP)` → `LD FP,-1(FP)` → `LDA PC,0(AC1)`.
 - **Recursión:** funciona, porque cada llamada tiene su propio marco (caso `casos/recursion.tny`).
 - **Arreglos locales:** ocupan celdas contiguas del marco, con el elemento 0 en la dirección más baja.
-- **No soportado todavía:** pasar arreglos como parámetro (`int V[]`), y que una rutina anidada lea locales de la rutina que la contiene (haría falta un enlace estático).
+- **Parámetros `int V[]` (por referencia):** la celda del parámetro guarda la **dirección absoluta** de `V[0]` del arreglo del llamador. `V[i]` se resuelve como `LD AC1,d(FP)` + `ADD AC,AC,AC1` + `LD/ST 0(AC)`. Una referencia recibida se puede reenviar a otra rutina, y también se puede pasar un arreglo local.
+- **No soportado todavía:** que una rutina anidada lea locales de la rutina que la contiene (haría falta un enlace estático).
 
 Para M4, en el depurador:
 - Durante una llamada, `FP` y `MP` bajan, y el marco se ve en la parte alta de `dMem` (cerca de 1023).

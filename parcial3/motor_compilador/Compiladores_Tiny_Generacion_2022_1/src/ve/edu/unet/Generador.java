@@ -68,6 +68,12 @@ public class Generador {
 	 * hueco reservado a la espera de conocer la direccion de entrada */
 	private static java.util.HashMap<String, java.util.List<Integer>> saltosPendientes =
 			new java.util.HashMap<String, java.util.List<Integer>>();
+	/* Parametros "int V[]": su celda del marco guarda la DIRECCION absoluta
+	 * del elemento 0 del arreglo del llamador (paso por referencia). Se
+	 * reconocen por identidad del RegistroSimbolo, porque un arreglo local
+	 * "int A[1]" tiene la misma categoria y tamano. */
+	private static java.util.Set<RegistroSimbolo> referencias =
+			java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<RegistroSimbolo, Boolean>());
 	
 	public static void setTablaSimbolos(TablaSimbolos tabla){
 		tablaSimbolos = tabla;
@@ -82,6 +88,7 @@ public class Generador {
 		tamanoMarco.clear();
 		entradaRutina.clear();
 		saltosPendientes.clear();
+		referencias.clear();
 		calcularMarcos(raiz);
 		generar(raiz);
 		/*Genero el codigo de finalizacion de ejecucion del codigo*/   
@@ -200,9 +207,9 @@ public class Generador {
 			/* A[i] := e. El valor queda en la pila temporal mientras se
 			 * calcula el indice, que puede usar AC a su antojo */
 			UtGen.emitirRM("ST", UtGen.AC, desplazamientoTmp--, UtGen.MP, "asignacion: push en la pila tmp el valor a asignar");
-			generarDesplazamientoIndice(n.getIndice(), base);
+			int desp = generarDireccionElemento(n.getIndice(), n, n.getIdentificador());
 			UtGen.emitirRM("LD", UtGen.AC1, ++desplazamientoTmp, UtGen.MP, "asignacion: pop del valor a asignar en AC1");
-			UtGen.emitirRM("ST", UtGen.AC1, direccion, UtGen.AC, "asignacion: almaceno el valor en "+n.getIdentificador()+"[indice]");
+			UtGen.emitirRM("ST", UtGen.AC1, desp, UtGen.AC, "asignacion: almaceno el valor en "+n.getIdentificador()+"[indice]");
 		}else{
 			/* Ahora almaceno el valor resultante */
 			UtGen.emitirRM("ST", UtGen.AC, direccion, base, "asignacion: almaceno el valor para el id "+n.getIdentificador());
@@ -218,9 +225,9 @@ public class Generador {
 		int base = registroBase(n);
 		if(n.esIndexada()){
 			/* read A[i]: primero el indice (ocupa AC), luego IN en AC1 */
-			generarDesplazamientoIndice(n.getIndice(), base);
+			int desp = generarDireccionElemento(n.getIndice(), n, n.getIdentificador());
 			UtGen.emitirRO("IN", UtGen.AC1, 0, 0, "leer: lee un valor entero ");
-			UtGen.emitirRM("ST", UtGen.AC1, direccion, UtGen.AC, "leer: almaceno el valor entero leido en "+n.getIdentificador()+"[indice]");
+			UtGen.emitirRM("ST", UtGen.AC1, desp, UtGen.AC, "leer: almaceno el valor entero leido en "+n.getIdentificador()+"[indice]");
 		}else{
 			UtGen.emitirRO("IN", UtGen.AC, 0, 0, "leer: lee un valor entero ");
 			UtGen.emitirRM("ST", UtGen.AC, direccion, base, "leer: almaceno el valor entero leido en el id "+n.getIdentificador());
@@ -284,22 +291,48 @@ public class Generador {
 		return UtGen.GP;
 	}
 
-	/* Deja en AC el desplazamiento absoluto de un elemento: indice + base
-	 * (GP o FP). La celda es entonces dir(AC), con la direccion del
-	 * arreglo como desplazamiento constante de la instruccion LD/ST.
-	 * Sin chequeo de limites: la TM solo detecta DMEM_ERR fuera de dMem. */
-	private static void generarDesplazamientoIndice(NodoBase indice, int registroBase){
+	/* Prepara el acceso al elemento arreglo[indice]: deja un valor en AC y
+	 * devuelve el desplazamiento d tal que la celda es d(AC).
+	 *  - arreglo propio (global o local): AC = indice + GP/FP, d = direccion
+	 *    del arreglo
+	 *  - parametro "int V[]": AC = indice + direccion guardada en el marco,
+	 *    d = 0
+	 * Pisa AC1. Sin chequeo de limites: la TM solo detecta DMEM_ERR fuera
+	 * de dMem. */
+	private static int generarDireccionElemento(NodoBase indice, NodoBase arreglo, String nombre){
 		generar(indice);
-		UtGen.emitirRO("ADD", UtGen.AC, UtGen.AC, registroBase, "arreglo: AC = indice + registro base");
+		int direccion = direccionDe(arreglo, nombre);
+		if(esReferencia(arreglo)){
+			UtGen.emitirRM("LD", UtGen.AC1, direccion, UtGen.FP, "arreglo por referencia: AC1 = direccion de "+nombre+"[0]");
+			UtGen.emitirRO("ADD", UtGen.AC, UtGen.AC, UtGen.AC1, "arreglo: AC = indice + direccion base");
+			return 0;
+		}
+		UtGen.emitirRO("ADD", UtGen.AC, UtGen.AC, registroBase(arreglo), "arreglo: AC = indice + registro base");
+		return direccion;
+	}
+
+	private static boolean esReferencia(NodoBase nodo){
+		RegistroSimbolo r = nodo.getRegistro();
+		return r != null && referencias.contains(r);
+	}
+
+	/* Argumento para un parametro "int V[]": AC = direccion absoluta del
+	 * elemento 0. Si el argumento ya es una referencia, se reenvia tal cual. */
+	private static void generarReferencia(NodoBase argumento){
+		NodoIdentificador id = (NodoIdentificador)argumento;
+		int direccion = direccionDe(id, id.getNombre());
+		if(esReferencia(id))
+			UtGen.emitirRM("LD", UtGen.AC, direccion, UtGen.FP, "llamada: reenvio la referencia "+id.getNombre());
+		else
+			UtGen.emitirRM("LDA", UtGen.AC, direccion, registroBase(id), "llamada: AC = direccion de "+id.getNombre()+"[0]");
 	}
 
 	/* A[i] dentro de una expresion: AC = dMem[dir + i + base] */
 	private static void generarAccesoArreglo(NodoBase nodo){
 		NodoAccesoArreglo n = (NodoAccesoArreglo)nodo;
-		int base = direccionDe(n, n.getNombre());
 		if(UtGen.debug)	UtGen.emitirComentario("-> acceso arreglo "+n.getNombre());
-		generarDesplazamientoIndice(n.getIndice(), registroBase(n));
-		UtGen.emitirRM("LD", UtGen.AC, base, UtGen.AC, "arreglo: cargo "+n.getNombre()+"[indice]");
+		int desp = generarDireccionElemento(n.getIndice(), n, n.getNombre());
+		UtGen.emitirRM("LD", UtGen.AC, desp, UtGen.AC, "arreglo: cargo "+n.getNombre()+"[indice]");
 		if(UtGen.debug)	UtGen.emitirComentario("<- acceso arreglo "+n.getNombre());
 	}
 
@@ -381,8 +414,11 @@ public class Generador {
 	private static void registrarMarco(String nombre, java.util.List<NodoDeclaracion> parametros, NodoBase cuerpo){
 		int celdas = 0;
 		if(parametros != null)
-			for(NodoDeclaracion d : parametros)
+			for(NodoDeclaracion d : parametros){
 				celdas = Math.max(celdas, finDeCeldas(d));
+				if(d instanceof NodoDeclaracionArreglo && d.getRegistro() != null)
+					referencias.add(d.getRegistro());
+			}
 		celdas = Math.max(celdas, celdasLocales(cuerpo));
 		tamanoMarco.put(nombre, CABECERA_MARCO + celdas);
 	}
@@ -476,7 +512,10 @@ public class Generador {
 		java.util.List<NodoBase> argumentos = n.getArgumentos();
 		for(int i = 0; i < argumentos.size(); i++){
 			RegistroSimbolo formal = firma.getParametros().get(i);
-			generar(argumentos.get(i));
+			if(referencias.contains(formal))
+				generarReferencia(argumentos.get(i));
+			else
+				generar(argumentos.get(i));
 			UtGen.emitirRM("ST", UtGen.AC, tope - CABECERA_MARCO - formal.getDesplazamiento(), UtGen.MP,
 					"llamada: argumento "+(i+1)+" -> "+formal.getIdentificador());
 		}
