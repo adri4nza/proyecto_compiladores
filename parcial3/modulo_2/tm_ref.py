@@ -13,7 +13,8 @@ por '*'; cualquier otra linea debe ser 'N: OP r,s,t' o 'N: OP r,d(s)'.
 USO
     python3 tm_ref.py PROGRAMA.tm [ENTRADA ...]
 
-Imprime un valor por linea por cada OUT. Codigo de salida:
+Imprime una linea por cada OUT (el entero) y por cada OUTC (el caracter
+entre comillas simples, p. ej. 'h'). Codigo de salida:
     0 = HALT   2 = .tm no cargable   3 = error de ejecucion (IMEM/DMEM/
     division por cero/entrada agotada/limite de pasos)
 """
@@ -25,7 +26,9 @@ DADDR_SIZE = 1024
 PC = 7
 LIMITE_PASOS = 200000
 
-OPS_RO = {"HALT", "IN", "OUT", "ADD", "SUB", "MUL", "DIV"}
+# OUTC no existe en el TM.C original: es la salida de caracter que agrega el
+# Modulo 2 para write "cadena" (ver INTEGRACION_M2.md)
+OPS_RO = {"HALT", "IN", "OUT", "OUTC", "ADD", "SUB", "MUL", "DIV"}
 OPS_RM = {"LD", "ST"}
 OPS_RA = {"LDA", "LDC", "JLT", "JLE", "JGT", "JGE", "JEQ", "JNE"}
 
@@ -81,7 +84,9 @@ def ejecutar(imem, entradas):
                 raise ErrorTM("IN sin entrada disponible (PC = %d)" % pc)
             reg[r] = entradas.pop(0)
         elif op == "OUT":
-            salidas.append(reg[r])
+            salidas.append(str(reg[r]))
+        elif op == "OUTC":
+            salidas.append("'%s'" % chr(reg[r]))
         elif op == "ADD":
             reg[r] = reg[s] + reg[t]
         elif op == "SUB":

@@ -32,9 +32,11 @@ CASOS_M2="$DIR_M2/casos"
 #   fuente.tny | entradas (separadas por espacio) | salida esperada
 #
 #   La salida esperada son los valores de los OUT, en orden, separados por
-#   espacio. Un mismo fuente puede aparecer varias veces con otra entrada.
+#   espacio. Cada OUTC aparece como su caracter entre comillas: 'h'.
+#   Un mismo fuente puede aparecer varias veces con otra entrada.
 # ---------------------------------------------------------------------------
 CASOS=(
+"$TINYPP/01_declaraciones_ok.tny | 3   | 4 0 'f' 'i' 'n'"
 "$TINYPP/02_arreglos_ok.tny      | 7   | 0 7"
 "$TINYPP/05_booleanos_ok.tny     | 0   | 0"
 "$TINYPP/05_booleanos_ok.tny     | 1   | 1"
@@ -42,6 +44,11 @@ CASOS=(
 "$TINYPP/07_factorial_tpp.tny    | 5   | 120"
 "$TINYPP/07_factorial_tpp.tny    | 0   | "
 "$CASOS_M2/arreglos_layout.tny   | 100 | 16 9 4 1 0 11 22 99 109"
+"$CASOS_M2/cadenas.tny           |     | 'h' 'i' 'o' 'k' 'h' 'i' 16"
+"$CASOS_M2/logica.tny            | 0 0 | 1 0 0 0 0"
+"$CASOS_M2/logica.tny            | 0 1 | 1 0 1 1 1"
+"$CASOS_M2/logica.tny            | 1 0 | 0 0 1 1 0"
+"$CASOS_M2/logica.tny            | 1 1 | 0 1 1 1 1"
 )
 
 recortar() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; echo "${s%"${s##*[![:space:]]}"}"; }

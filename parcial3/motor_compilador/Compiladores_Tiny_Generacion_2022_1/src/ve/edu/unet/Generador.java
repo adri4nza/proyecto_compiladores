@@ -34,6 +34,14 @@ public class Generador {
 	 */
 	private static int desplazamientoTmp = 0;
 	private static TablaSimbolos tablaSimbolos = null;
+
+	/* Literales string reservados en memoria de datos: literal -> direccion
+	 * de su celda de largo. Layout de cada uno: [largo][c1]..[cn], con cada
+	 * caracter como su codigo ASCII. Van justo despues de las globales, asi
+	 * que no chocan con ellas ni con la pila temporal que baja desde MP.
+	 * Un literal repetido reutiliza la misma reserva. */
+	private static java.util.LinkedHashMap<String, Integer> cadenas =
+			new java.util.LinkedHashMap<String, Integer>();
 	
 	public static void setTablaSimbolos(TablaSimbolos tabla){
 		tablaSimbolos = tabla;
@@ -44,6 +52,7 @@ public class Generador {
 	 * vacia, comentario '*' o instruccion 'N:' con "Bad location". */
 	public static void generarCodigoObjeto(NodoBase raiz){
 		generarPreludioEstandar();
+		reservarCadenas(raiz);
 		generar(raiz);
 		/*Genero el codigo de finalizacion de ejecucion del codigo*/   
 		UtGen.emitirComentario("Fin de la ejecucion.");
@@ -101,8 +110,14 @@ public class Generador {
 		UtGen.emitirComentario("If: el salto hacia el else debe estar aqui");
 		/*Genero la parte THEN*/
 		generar(n.getParteThen());
-		localidadSaltoEnd = UtGen.emitirSalto(1);
-		UtGen.emitirComentario("If: el salto hacia el final debe estar aqui");
+		/* El hueco del salto al final solo se reserva si hay ELSE: sin ELSE
+		 * nadie lo rellena y la TM, que inicializa iMem con HALT, detendria
+		 * el programa al terminar el THEN */
+		localidadSaltoEnd = -1;
+		if(n.getParteElse()!=null){
+			localidadSaltoEnd = UtGen.emitirSalto(1);
+			UtGen.emitirComentario("If: el salto hacia el final debe estar aqui");
+		}
 		localidadActual = UtGen.emitirSalto(0);
 		UtGen.cargarRespaldo(localidadSaltoElse);
 		UtGen.emitirRM_Abs("JEQ", UtGen.AC, localidadActual, "if: jmp hacia else");
@@ -174,6 +189,11 @@ public class Generador {
 	private static void generarEscribir(NodoBase nodo){
 		NodoEscribir n = (NodoEscribir)nodo;
 		if(UtGen.debug)	UtGen.emitirComentario("-> escribir");
+		if(n.getExpresion() instanceof NodoString){
+			generarEscribirCadena((NodoString)n.getExpresion());
+			if(UtGen.debug)	UtGen.emitirComentario("<- escribir");
+			return;
+		}
 		/* Genero el codigo de la expresion que va a ser escrita en pantalla */
 		generar(n.getExpresion());
 		/* Ahora genero la salida */
@@ -225,6 +245,59 @@ public class Generador {
 		generarDesplazamientoIndice(n.getIndice());
 		UtGen.emitirRM("LD", UtGen.AC, base, UtGen.AC, "arreglo: cargo "+n.getNombre()+"[indice]");
 		if(UtGen.debug)	UtGen.emitirComentario("<- acceso arreglo "+n.getNombre());
+	}
+
+	/* Recorre las sentencias buscando write "literal" (el semantico solo
+	 * admite cadenas ahi) y reserva cada literal distinto en dMem, emitiendo
+	 * las instrucciones que lo inicializan al arrancar el programa. */
+	private static void reservarCadenas(NodoBase raiz){
+		cadenas.clear();
+		recolectarCadenas(raiz);
+		int direccion = tablaSimbolos.getProximaDireccionGlobal();
+		for(String literal : cadenas.keySet()){
+			cadenas.put(literal, direccion);
+			UtGen.emitirComentario("cadena \""+literal+"\" en dMem["+direccion+"]");
+			UtGen.emitirRM("LDC", UtGen.AC, literal.length(), 0, "cadena: largo "+literal.length());
+			UtGen.emitirRM("ST", UtGen.AC, direccion, UtGen.GP, "cadena: guardo el largo");
+			for(int i = 0; i < literal.length(); i++){
+				UtGen.emitirRM("LDC", UtGen.AC, literal.charAt(i), 0, "cadena: caracter "+literal.charAt(i));
+				UtGen.emitirRM("ST", UtGen.AC, direccion + 1 + i, UtGen.GP, "cadena: guardo el caracter");
+			}
+			direccion += literal.length() + 1;
+		}
+	}
+
+	private static void recolectarCadenas(NodoBase nodo){
+		for(NodoBase n = nodo; n != null; n = n.getHermanoDerecha()){
+			if(n instanceof NodoEscribir){
+				NodoBase e = ((NodoEscribir)n).getExpresion();
+				if(e instanceof NodoString)
+					cadenas.put(((NodoString)e).getValor(), -1);
+			}else if(n instanceof NodoIf){
+				recolectarCadenas(((NodoIf)n).getParteThen());
+				recolectarCadenas(((NodoIf)n).getParteElse());
+			}else if(n instanceof NodoRepeat){
+				recolectarCadenas(((NodoRepeat)n).getCuerpo());
+			}else if(n instanceof NodoFuncion){
+				recolectarCadenas(((NodoFuncion)n).getCuerpo());
+			}else if(n instanceof NodoProcedimiento){
+				recolectarCadenas(((NodoProcedimiento)n).getCuerpo());
+			}
+		}
+	}
+
+	/* write "literal": un OUTC por caracter, leyendo la cadena de su reserva.
+	 * OUTC es una instruccion NUEVA de la TM (formato RO, como OUT): imprime
+	 * reg[r] como el caracter de ese codigo ASCII, sin salto de linea.
+	 * La deben implementar M3 (simulador) y M4 (consola del IDE); ver
+	 * parcial3/modulo_2/INTEGRACION_M2.md. */
+	private static void generarEscribirCadena(NodoString n){
+		int base = cadenas.get(n.getValor());
+		String literal = n.getValor();
+		for(int i = 0; i < literal.length(); i++){
+			UtGen.emitirRM("LD", UtGen.AC, base + 1 + i, UtGen.GP, "escribir: cargo el caracter "+literal.charAt(i));
+			UtGen.emitirRO("OUTC", UtGen.AC, 0, 0, "escribir: salida del caracter");
+		}
 	}
 
 	/* Las declaraciones no emiten instrucciones: la direccion ya la reservo

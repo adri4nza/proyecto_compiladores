@@ -49,7 +49,9 @@ Lee la sección "Traspaso al Modulo 2" y la tabla "Alerta de integración" de `p
 
 - **Resuelto en `modulo-2`:** Deuda A (cabeceras en stdout) y Deuda B (NPE del `not` unario, faltaban `case y/o`). `bool` se representa como entero 0/1: `not` = `1 - AC`, `and` = `MUL`, `or` = `ADD` normalizado; sin cortocircuito. Las declaraciones no emiten código (la dirección ya la asignó la tabla).
 - **Arreglos globales generados:** celda = `base + indice + GP`; el índice se calcula en AC (`ADD AC,AC,GP`) y `LD`/`ST` usan la base como desplazamiento. Sin chequeo de límites. Las direcciones salen de `nodo.getRegistro()`.
-- **Pendiente:** `NodoFuncion`, `NodoProcedimiento`, `NodoLlamada`, `NodoRetorno` y `NodoString` (caen en un comentario `BUG`, que con `UtGen.debug=false` no se imprime: `write "fin"` se pierde en silencio). **Chequear `NodoDeclaracionArreglo` antes que `NodoDeclaracion`** (hereda de ella).
+- **Cadenas:** cada literal de `write "..."` se reserva una vez en dMem tras las globales (`[largo][c1]..[cn]`) y se imprime con **`OUTC`, instrucción nueva** que deben implementar M3 y M4: ver `parcial3/modulo_2/INTEGRACION_M2.md`. El TM.C original la rechaza.
+- **Corregido del código base:** un `if` sin `else` dejaba un hueco sin rellenar (HALT) y detenía el programa tras el `then`.
+- **Pendiente:** `NodoFuncion`, `NodoProcedimiento`, `NodoLlamada` y `NodoRetorno` (caen en un comentario `BUG`). **Chequear `NodoDeclaracionArreglo` antes que `NodoDeclaracion`** (hereda de ella).
 - `NodoAsignacion` / `NodoLeer` tienen `indice` (`esIndexada()`) para `A[i] := e` y `read A[i]`.
 - Resolver direcciones con `nodo.getRegistro()` (anotado por el semántico; sobrevive al cierre de ámbitos), no con `getDireccion(String)`. `RegistroSimbolo` trae `tipo`, `categoria`, `tamano`, `nivel`, `esGlobal`, `desplazamiento`, `parametros`.
 - Globales: direcciones desde 0 (igual que el base). Locales/parámetros: `desplazamiento` desde 0 dentro del marco. `FP = reg[4]` reservado para los Activation Records.
