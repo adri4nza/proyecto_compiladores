@@ -1,0 +1,19 @@
+{ Caso M2: literales string en write.
+  Cada literal se reserva en dMem DESPUES de las globales como
+  [largo][c1]..[cn] y write emite un OUTC por caracter.
+  - el mismo literal escrito dos veces reutiliza su reserva
+  - la cadena vacia no emite nada
+  - un literal dentro de un if
+  - las globales no se pisan con las cadenas
+  Entrada: ninguna   Salida: h i o k h i 16 }
+int a;
+int b;
+a := 7;
+write "hi";
+if a = 7 then
+  write "ok"
+end;
+write "";
+write "hi";
+b := 9;
+write a + b

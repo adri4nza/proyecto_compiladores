@@ -1,0 +1,49 @@
+{ Caso M2: parametros de tipo arreglo por referencia.
+  - el procedimiento escribe en el arreglo del llamador
+  - una funcion lo recorre y devuelve la suma
+  - read sobre un elemento recibido por referencia
+  - una referencia que se reenvia a otra rutina
+  - un arreglo LOCAL pasado por referencia
+  Entrada: 100   Salida: 18 100 112 11 9 }
+int A[4];
+procedure llenar(int W[], int k)
+  int j;
+  j := 0;
+  repeat
+    W[j] := k * j;
+    j := j + 1
+  until j = 4
+end;
+function int sumar(int W[], int n)
+  int j;
+  int s;
+  j := 0;
+  s := 0;
+  repeat
+    s := s + W[j];
+    j := j + 1
+  until j = n;
+  return s
+end;
+procedure leerEn(int W[], int p)
+  read W[p]
+end;
+function int reenviar(int W[])
+  return sumar(W, 4)
+end;
+procedure poner(int W[], int p, int v)
+  W[p] := v
+end;
+procedure locales(int x)
+  int L[2];
+  poner(L, 0, 5);
+  poner(L, 1, x);
+  write L[0] + L[1]
+end;
+llenar(A, 3);
+write sumar(A, 4);
+leerEn(A, 2);
+write A[2];
+write reenviar(A);
+locales(6);
+write A[3] + A[0]
