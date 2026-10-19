@@ -1,1 +1,24 @@
+# ── Node.js ──────────────────────────────────────────────────────────────────
 parcial3/interfaz-ide/node_modules/
+parcial3/servidor_puente/node_modules/
+
+# ── Variables de entorno (nunca al repo) ─────────────────────────────────────
+parcial3/servidor_puente/.env
+
+# ── Java: clases compiladas y artefactos de IntelliJ ─────────────────────────
+parcial3/motor_compilador/out/
+parcial3/motor_compilador/**/*.class
+parcial3/motor_compilador/.idea/workspace.xml
+parcial3/motor_compilador/.idea/tasks.xml
+
+# ── C: binario compilado del simulador TM ────────────────────────────────────
+# El binario se compila localmente con "make" — no se versiona
+parcial3/simulador_tm/tm
+parcial3/simulador_tm/tm.dSYM/
+
+# ── Vite: build de producción ─────────────────────────────────────────────────
+parcial3/interfaz-ide/dist/
+
+# ── Sistemas operativos ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
