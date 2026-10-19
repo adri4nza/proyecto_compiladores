@@ -5,6 +5,7 @@ import Toolbar         from './components/Toolbar/Toolbar'
 import CodeEditor      from './components/Editor/CodeEditor'
 import DebuggerPanel   from './components/Debugger/DebuggerPanel'
 import ConsolePanel    from './components/Console/ConsolePanel'
+import InputModal      from './components/Debugger/InputModal'
 import type { CompilerError } from './types/tm.types'
 import './App.css'
 
@@ -47,22 +48,41 @@ export default function App() {
     run,
     stop,
     reset,
+    sendInput,
   } = useSocket()
 
-  // Propagar estado TM recibido por WebSocket al hook de estado
+  // Propagar estado TM del WebSocket al hook de estado
   useEffect(() => {
     if (latestTmState) updateTmState(latestTmState)
   }, [latestTmState, updateTmState])
 
-  // Mostrar errores del simulador en consola
   useEffect(() => {
     if (latestTmError) addConsoleEntry('error', `[Simulador] ${latestTmError}`)
   }, [latestTmError, addConsoleEntry])
 
-  // Mostrar mensajes informativos del simulador (ej: "usando mock")
   useEffect(() => {
     if (latestTmInfo) addConsoleEntry('warn', latestTmInfo)
   }, [latestTmInfo, addConsoleEntry])
+
+  // Mostrar salida OUT del simulador en la consola
+  useEffect(() => {
+    if (!latestTmState) return
+    const s = latestTmState as TMStateWithOutput
+    if (s.salida_consola !== undefined && s.salida_consola !== null) {
+      // Si la instrucción ejecutada es OUTC, mostrar como carácter
+      const esChar = s.instruccion_ejecutada?.op === 'OUTC'
+      const texto = esChar
+        ? String.fromCharCode(s.salida_consola)
+        : String(s.salida_consola)
+      addConsoleEntry('output', `OUT: ${texto}`)
+    }
+    if (s.resultado_paso === 'HALT') {
+      addConsoleEntry('success', 'Programa terminado (HALT).')
+    }
+    if (s.resultado_paso === 'ZERO_DIVIDE') {
+      addConsoleEntry('error', 'Error en ejecución: División por cero.')
+    }
+  }, [latestTmState])   // eslint-disable-line
 
   // ── Derivados de estado ───────────────────────────────────────────────────
   const isHalted       = tmState.resultado_paso === 'HALT'
@@ -82,9 +102,8 @@ export default function App() {
         body:    JSON.stringify({ codigo: sourceCode }),
       })
 
-      // El servidor SIEMPRE devuelve 200 — si no, hay un problema de red
       if (!resp.ok) {
-        addConsoleEntry('error', `Error HTTP inesperado del servidor: ${resp.status}. ¿Está corriendo?`)
+        addConsoleEntry('error', `Error HTTP inesperado del servidor: ${resp.status}.`)
         return
       }
 
@@ -100,15 +119,13 @@ export default function App() {
         const instrCount = (result.tm_code.match(/^\s*\d+:/gm) ?? []).length
         addConsoleEntry('success', `Compilación exitosa — ${instrCount} instrucciones TM generadas.`)
 
-        // ── Conectar con M3: enviar el .tm al simulador por WebSocket ──────
         if (isConnected) {
           addConsoleEntry('info', 'Enviando programa al simulador TM...')
           iniciarSimulador(result.tm_code)
         } else {
-          addConsoleEntry('warn', 'Simulador no conectado — inicia el servidor_puente para depurar.')
+          addConsoleEntry('warn', 'Simulador no conectado — inicia el servidor_puente.')
           addConsoleEntry('output', result.tm_code)
         }
-
         setCompilerErrors([])
       } else {
         addConsoleEntry('warn', 'El compilador no produjo código ni errores.')
@@ -124,11 +141,11 @@ export default function App() {
     }
   }
 
-  // ── Handlers de depuración ─────────────────────────────────────────────────
-  const handleStep  = () => { step() }
-  const handleRun   = () => { run()  }
-  const handleStop  = () => { stop(); addConsoleEntry('warn', 'Ejecución detenida.') }
-  const handleReset = () => { reset(); addConsoleEntry('info', 'Simulador reiniciado.') }
+  // ── Input del simulador ────────────────────────────────────────────────────
+  const handleInputSubmit = (value: number) => {
+    sendInput(value)
+    addConsoleEntry('info', `IN: ingresaste ${value}`)
+  }
 
   return (
     <div className="app-layout">
@@ -138,10 +155,10 @@ export default function App() {
         isWaitingInput={isWaitingInput}
         isCompiling={isCompiling}
         onCompile={handleCompile}
-        onRun={handleRun}
-        onStep={handleStep}
-        onStop={handleStop}
-        onReset={handleReset}
+        onRun={()   => run()}
+        onStep={()  => step()}
+        onStop={()  => { stop(); addConsoleEntry('warn', 'Ejecución detenida.') }}
+        onReset={() => { reset(); addConsoleEntry('info', 'Simulador reiniciado.') }}
       />
 
       <div className="editor-area">
@@ -162,6 +179,19 @@ export default function App() {
       <div className="console-area">
         <ConsolePanel entries={consoleEntries} onClear={clearConsole} />
       </div>
+
+      {/* Diálogo gráfico para instrucción read (requerimiento del enunciado) */}
+      <InputModal
+        visible={isWaitingInput}
+        onSubmit={handleInputSubmit}
+      />
     </div>
   )
+}
+
+// Extensión local del tipo para el campo extra que emite Carlos
+interface TMStateWithOutput {
+  salida_consola?:       number | null
+  instruccion_ejecutada?: { op: string } | null
+  resultado_paso:        string
 }

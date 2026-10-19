@@ -1,12 +1,5 @@
 /**
  * useSocket — Gestiona la conexión WebSocket con el servidor_puente.
- *
- * - Conecta al montar, desconecta al desmontar.
- * - Expone acciones: iniciarSimulador, step, run, stop, reset, toggleBreakpoint.
- * - Devuelve el último estado TM recibido y el estado de conexión.
- *
- * Cuando el servidor no está corriendo, `isConnected` es false y
- * las acciones quedan silenciosas (el servidor puente mostrará el error).
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
@@ -25,6 +18,7 @@ export interface UseSocketReturn {
   run:               () => void
   stop:              () => void
   reset:             () => void
+  sendInput:         (value: number) => void
   toggleBreakpoint:  (linea: number) => void
 }
 
@@ -49,7 +43,7 @@ export function useSocket(): UseSocketReturn {
     socket.on('tm_info',    (msg: string)    => setLatestInfo(msg))
 
     return () => { socket.disconnect() }
-  }, [])  // solo mount/unmount
+  }, [])
 
   const emit = useCallback((event: string, data?: unknown) => {
     socketRef.current?.emit(event, data)
@@ -65,6 +59,7 @@ export function useSocket(): UseSocketReturn {
     run:               ()        => emit('run'),
     stop:              ()        => emit('stop'),
     reset:             ()        => emit('reset'),
+    sendInput:         (value)   => emit('input', { value }),
     toggleBreakpoint:  (linea)   => emit('break', { linea }),
   }
 }

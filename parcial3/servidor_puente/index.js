@@ -317,6 +317,13 @@ io.on('connection', socket => {
     session.toggleBreakpoint(linea, socket)
   })
 
+  // ── input (valor para instrucción IN pendiente) ───────────────────────────
+  socket.on('input', ({ value }) => {
+    const session = sessions.get(socket.id)
+    if (!session) return socket.emit('tm_error', 'No hay programa cargado.')
+    session.sendInput(value, socket)
+  })
+
   // ── desconexión ───────────────────────────────────────────────────────────
   socket.on('disconnect', () => {
     console.log(`[ws] Desconectado: ${socket.id}`)
@@ -374,6 +381,7 @@ function spawnRealTm(socket, instructions, tmCode) {
     run:   (_sock) => proc.stdin.write('run\n'),
     reset: (_sock) => proc.stdin.write('reset\n'),
     stop:  ()      => proc.stdin.write('stop\n'),
+    sendInput: (value, _sock) => proc.stdin.write(`input ${value}\n`),
     toggleBreakpoint: (linea, _sock) => proc.stdin.write(`break ${linea}\n`),
     destroy: () => {
       try { proc.kill(); unlinkSync(tmpTm) } catch { /* ignorar */ }
