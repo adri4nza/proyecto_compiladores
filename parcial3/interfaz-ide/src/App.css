@@ -1,0 +1,30 @@
+.app-layout {
+  display: grid;
+  height: 100vh;
+  /* Editor toma el espacio restante, debugger tiene ancho fijo */
+  grid-template-columns: 1fr 380px;
+  /* Toolbar fijo, workspace flexible, consola fija */
+  grid-template-rows: 40px 1fr 160px;
+  grid-template-areas:
+    "toolbar  toolbar"
+    "editor   debugger"
+    "console  console";
+  overflow: hidden;
+}
+
+.editor-area {
+  grid-area: editor;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+
+.debugger-area {
+  grid-area: debugger;
+  overflow: hidden;
+}
+
+.console-area {
+  grid-area: console;
+  border-top: 1px solid var(--border2);
+  overflow: hidden;
+}

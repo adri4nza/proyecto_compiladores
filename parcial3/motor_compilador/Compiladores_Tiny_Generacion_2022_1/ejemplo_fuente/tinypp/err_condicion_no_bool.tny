@@ -1,0 +1,8 @@
+{ Caso INVALIDO: la condicion de un if es de tipo int y no bool.
+  Error esperado: semantico "La condicion debe ser de tipo bool, se
+  encontro int" en la LINEA 6. Debe salir con codigo 1. }
+int x;
+read x;
+if x then
+  write x
+end

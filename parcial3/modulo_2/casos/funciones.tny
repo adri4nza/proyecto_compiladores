@@ -1,0 +1,68 @@
+{ Caso M2: funciones, procedimientos y Activation Records.
+  - parametros y una variable local
+  - temporales vivos alrededor de una llamada: 1 + suma(g, 5) * 2
+  - llamadas anidadas como argumentos
+  - un procedimiento que escribe sobre un arreglo global
+  - return temprano en las dos ramas de un if
+  - arreglo local dentro de un procedimiento
+  - return sin valor en un procedimiento
+  - la global g sobrevive a todas las llamadas
+  Salida: 7 31 25 22 2 ! 9 9 10 4 10 }
+int g;
+int V[3];
+function int suma(int a, int b)
+  int t;
+  t := a + b;
+  return t
+end;
+function int cuadrado(int x)
+  return x * x
+end;
+function int maximo(int a, int b)
+  if a < b then
+    return b
+  else
+    return a
+  end
+end;
+procedure llenar(int n)
+  int i;
+  i := 0;
+  repeat
+    V[i] := n + i;
+    i := i + 1
+  until i = 3
+end;
+procedure mostrar(int k)
+  write k;
+  write "!"
+end;
+procedure locales(int n)
+  int L[3];
+  int j;
+  j := 0;
+  repeat
+    L[j] := j * n;
+    j := j + 1
+  until j = 3;
+  write L[2]
+end;
+procedure positivo(int x)
+  if x < 0 then
+    return
+  end;
+  write x
+end;
+g := 10;
+write suma(3, 4);
+write 1 + suma(g, 5) * 2;
+write suma(cuadrado(3), cuadrado(4));
+llenar(g);
+write V[0] + V[2];
+mostrar(suma(1, 1));
+write maximo(3, 9);
+write maximo(9, 3);
+locales(5);
+positivo(0 - 1);
+positivo(4);
+write g

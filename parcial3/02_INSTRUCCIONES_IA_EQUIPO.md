@@ -26,10 +26,10 @@ Se está construyendo un **compilador para el lenguaje Tiny++** (extensión tipa
 
 | ID | Módulo | Tecnología | Responsable |
 |----|--------|------------|-------------|
-| **M1** | Lexer, Parser, AST, Análisis Semántico | Java + JFlex + CUP | Responsable M1 |
-| **M2** | Generación de Código TM (arreglos, scopes, funciones) | Java | Responsable M2 |
-| **M3** | Simulador TM interactivo (modo stdin/stdout) | C + gcc en WSL | Responsable M3 |
-| **M4** | IDE en React, Servidor puente Node.js, Depurador Visual | React + TypeScript + Node.js | Responsable M4 |
+| **M1** | Lexer, Parser, AST, Análisis Semántico | Java + JFlex + CUP | Ricardo |
+| **M2** | Generación de Código TM (arreglos, scopes, funciones) | Java | Ivan |
+| **M3** | Simulador TM interactivo (modo stdin/stdout) | C + gcc en WSL | Carlos |
+| **M4** | IDE en React, Servidor puente Node.js, Depurador Visual | React + TypeScript + Node.js | Francisco |
 
 ### El repositorio
 
@@ -195,14 +195,14 @@ Luego sigue con el código normalmente. No bloquees al usuario, solo informa.
 
 | Si el cambio toca... | Notificar a... |
 |----------------------|----------------|
-| `lexico.flex`, tokens en `sym.java` | Responsable M1 Y Responsable M2 |
-| Clases `Nodo*.java` en `nodosAST/` | Responsable M1 Y Responsable M2 |
-| `TablaSimbolos.java`, `RegistroSimbolo.java` | Responsable M1 Y Responsable M2 |
-| `Generador.java`, `UtGen.java` | Responsable M2 Y Responsable M1 |
-| Claves del JSON en `estado_tm_mock.json` | Responsable M4 Y Responsable M3 |
-| Claves del JSON de errores del compilador | Responsable M4 |
-| Comandos stdin del simulador | Responsable M3 Y Responsable M4 |
-| `servidor_puente/` | Responsable M4 |
+| `lexico.flex`, tokens en `sym.java` | Ricardo (M1) Y Ivan (M2) |
+| Clases `Nodo*.java` en `nodosAST/` | Ricardo (M1) Y Ivan (M2) |
+| `TablaSimbolos.java`, `RegistroSimbolo.java` | Ricardo (M1) Y Ivan (M2) |
+| `Generador.java`, `UtGen.java` | Ivan (M2) Y Ricardo (M1) |
+| Claves del JSON en `estado_tm_mock.json` | Francisco (M4) Y Carlos (M3) |
+| Claves del JSON de errores del compilador | Francisco (M4) |
+| Comandos stdin del simulador | Carlos (M3) Y Francisco (M4) |
+| `servidor_puente/` | Francisco (M4) |
 
 ---
 
@@ -277,7 +277,7 @@ En versiones anteriores del mock se usaba `linea_actual`. Ese campo fue **elimin
 
 4. **Cuando el humano describa un error que suene a problema de integración** ("no recibo datos", "el JSON no llega", "no reconoce el token"), revisa primero la lista de trampas técnicas (Sección 4) antes de buscar errores en el código nuevo.
 
-5. **Habla en términos del módulo del usuario**. Si estás ayudando al responsable de M1, habla de tokens, reglas BNF, nodos AST, scopes. Si ayudas al responsable de M3, habla de instrucciones TM, registros, modos de ejecución en C. Si ayudas al responsable de M4, habla de componentes React, eventos WebSocket, hooks, tipos TypeScript.
+5. **Habla en términos del módulo del usuario**. Si estás ayudando a Ricardo (M1), habla de tokens, reglas BNF, nodos AST, scopes. Si ayudas a Carlos (M3), habla de instrucciones TM, registros, modos de ejecución en C. Si ayudas a Francisco (M4), habla de componentes React, eventos WebSocket, hooks, tipos TypeScript.
 
 6. **El plazo es de 4 días. Prioriza lo que vale más nota.** El orden de prioridad si el tiempo se agota es: declaraciones tipadas → errores semánticos con línea → depurador visual paso a paso → arreglos → funciones con Activation Records. No propongas features no pedidas.
 

@@ -1,0 +1,14 @@
+{ Caso VALIDO 05: operadores logicos not, and, or; su precedencia
+  (not > and > or) y una expresion bool como condicion de un if.
+  Debe compilar con CERO errores y salir con codigo 0. }
+int x;
+bool f;
+bool g;
+read x;
+f := not (x = 0) and 3 < x;
+g := f or x = 1;
+if not f or g then
+  write x
+else
+  write 0
+end

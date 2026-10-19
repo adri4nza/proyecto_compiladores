@@ -1,0 +1,122 @@
+.toolbar {
+  grid-area: toolbar;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 14px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.toolbar-logo {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blue);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  margin-right: 4px;
+}
+.toolbar-logo span { color: var(--text3); font-weight: 400; }
+
+.toolbar-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border2);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+.toolbar-spacer { flex: 1; }
+
+/* ── Botones ── */
+.tb-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text2);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  line-height: 1.5;
+}
+.tb-btn:hover:not(:disabled) {
+  background: var(--bg4);
+  color: var(--text);
+  border-color: var(--border2);
+}
+.tb-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Compilar — amber */
+.tb-btn--compile {
+  color: var(--amber);
+  border-color: var(--amber-dim);
+  background: rgba(229,192,123,.06);
+}
+.tb-btn--compile:hover:not(:disabled) {
+  background: rgba(229,192,123,.14);
+  border-color: var(--amber);
+  color: var(--amber2);
+}
+
+/* Run — verde */
+.tb-btn--go {
+  color: var(--green);
+  border-color: var(--green-dim);
+  background: rgba(152,195,121,.05);
+}
+.tb-btn--go:hover:not(:disabled) {
+  background: rgba(152,195,121,.14);
+  border-color: var(--green);
+  color: var(--green2);
+}
+
+/* Step — azul */
+.tb-btn--step {
+  color: var(--blue);
+  border-color: var(--blue-dim);
+  background: rgba(97,175,239,.05);
+}
+.tb-btn--step:hover:not(:disabled) {
+  background: rgba(97,175,239,.14);
+  border-color: var(--blue);
+}
+
+/* Stop — rojo */
+.tb-btn--stop {
+  color: var(--red);
+  border-color: var(--red-dim);
+  background: rgba(224,108,117,.05);
+}
+.tb-btn--stop:hover:not(:disabled) {
+  background: rgba(224,108,117,.14);
+  border-color: var(--red);
+  color: var(--red2);
+}
+
+/* Estado de conexión */
+.toolbar-status {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 100px;   /* píldora */
+  border: 1px solid transparent;
+  letter-spacing: 0.03em;
+}
+.toolbar-status--on  {
+  color: var(--green);
+  background: rgba(152,195,121,.08);
+  border-color: var(--green-dim);
+}
+.toolbar-status--off {
+  color: var(--text3);
+  background: transparent;
+  border-color: var(--border);
+}

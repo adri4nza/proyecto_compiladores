@@ -1,0 +1,9 @@
+{ Caso INVALIDO: se pasa un bool donde la funcion 'doble' espera un int.
+  Error esperado: semantico "Argumento 1 de 'doble': se esperaba int, se
+  encontro bool" en la LINEA 9. Debe salir con codigo 1. }
+int r;
+bool f;
+function int doble(int a)
+  return a + a
+end;
+r := doble(f)

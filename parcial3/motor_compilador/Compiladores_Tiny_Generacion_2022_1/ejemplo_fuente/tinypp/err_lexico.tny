@@ -1,0 +1,6 @@
+{ Caso INVALIDO: el caracter '@' no pertenece al alfabeto de Tiny++.
+  Error esperado: lexico "Caracter ilegal: @" en la LINEA 6.
+  Debe salir con codigo 1. }
+int x;
+read x;
+write x @

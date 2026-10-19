@@ -1,0 +1,78 @@
+.dmem-view {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg1);
+}
+
+.dmem-count {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text3);
+  font-weight: 500;
+}
+
+.dmem-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 0;
+}
+
+.dmem-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.dmem-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg2);
+  color: var(--text3);
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 5px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.dmem-table tbody tr {
+  transition: background 0.12s;
+  border-bottom: 1px solid transparent;
+}
+.dmem-table tbody tr:hover { background: rgba(255,255,255,.03); }
+
+/* Celda que cambió en el último step */
+.dmem-row--changed {
+  background: rgba(229, 192, 123, 0.1) !important;
+  animation: flash 0.5s ease-out;
+}
+@keyframes flash {
+  0%   { background: rgba(229, 192, 123, 0.30); }
+  100% { background: rgba(229, 192, 123, 0.10); }
+}
+
+.dmem-addr {
+  padding: 3px 12px;
+  color: var(--text3);
+  font-size: 10px;
+  width: 60px;
+}
+.dmem-val {
+  padding: 3px 12px;
+  color: var(--amber);
+  font-weight: 500;
+}
+
+.dmem-empty {
+  padding: 12px;
+  color: var(--text3);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-style: italic;
+  text-align: center;
+}
