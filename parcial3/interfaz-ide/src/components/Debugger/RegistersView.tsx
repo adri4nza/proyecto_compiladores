@@ -6,7 +6,6 @@ interface RegistersViewProps {
   resultado: string
 }
 
-// Nombres descriptivos para tooltips
 const REG_TOOLTIP: Record<keyof TMRegisters, string> = {
   PC:  'Program Counter — Próxima instrucción a ejecutar',
   AC:  'Acumulador — Registro de trabajo principal',
@@ -27,6 +26,17 @@ const RESULTADO_CLASS: Record<string, string> = {
 }
 
 export default function RegistersView({ registros, resultado }: RegistersViewProps) {
+  const isHalted = resultado === 'HALT'
+  const isError  = ['IMEM_ERR', 'DMEM_ERR', 'ZERO_DIVIDE'].includes(resultado)
+
+  /** Clase CSS del valor según estado global y si es no-cero */
+  const valClass = (name: keyof TMRegisters): string => {
+    if (isError)                   return 'reg-val reg-val--error'
+    if (isHalted && name === 'PC') return 'reg-val reg-val--halted'
+    if (registros[name] !== 0)     return 'reg-val reg-val--nonzero'
+    return 'reg-val'
+  }
+
   return (
     <div className="reg-view">
       <div className="panel-header">
@@ -44,7 +54,7 @@ export default function RegistersView({ registros, resultado }: RegistersViewPro
             title={REG_TOOLTIP[name]}
           >
             <span className="reg-name">{name}</span>
-            <span className="reg-val">{registros[name]}</span>
+            <span className={valClass(name)}>{registros[name]}</span>
           </div>
         ))}
       </div>

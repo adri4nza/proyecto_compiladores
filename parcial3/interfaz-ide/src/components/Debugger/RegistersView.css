@@ -1,23 +1,29 @@
 .reg-view {
   display: flex;
   flex-direction: column;
+  background: var(--bg1);
 }
 
+/* Badge de resultado */
 .resultado-badge {
+  font-family: var(--font-ui);
   font-size: 10px;
-  padding: 1px 7px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
   border: 1px solid;
+  letter-spacing: 0.04em;
 }
-.badge--ok   { color: var(--green); border-color: var(--green-dim); }
-.badge--halt { color: var(--amber); border-color: var(--amber-dim); }
-.badge--err  { color: var(--red);   border-color: var(--red-dim);   }
+.badge--ok    { color: var(--green);  border-color: var(--green-dim);  background: rgba(152,195,121,.07); }
+.badge--halt  { color: var(--amber);  border-color: var(--amber-dim);  background: rgba(229,192,123,.07); }
+.badge--err   { color: var(--red);    border-color: var(--red-dim);    background: rgba(224,108,117,.07); }
 
+/* ── Cuadrícula de registros ── */
 .reg-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  padding: 8px;
-  overflow-y: auto;
+  gap: 6px;
+  padding: 10px 12px;
 }
 
 .reg-cell {
@@ -25,31 +31,58 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 6px 4px;
+  gap: 4px;
+  padding: 8px 6px;
   background: var(--bg3);
   border: 1px solid var(--border);
+  border-radius: var(--radius);
   cursor: default;
+  transition: border-color 0.2s, background 0.2s;
+  min-height: 52px;
 }
+.reg-cell:hover { background: var(--bg4); }
 
-/* PC ocupa dos columnas y se destaca en verde */
+/* PC — protagonista: ocupa 2 columnas, estilo "métrica de dashboard" */
 .reg-cell--pc {
   grid-column: span 2;
-  background: rgba(64, 200, 128, 0.07);
-  border-color: rgba(64, 200, 128, 0.35);
+  background: rgba(97, 175, 239, 0.08);
+  border-color: rgba(97, 175, 239, 0.4);
+  border-left: 3px solid var(--blue);
+  padding: 10px 10px;
+  min-height: 62px;
 }
+.reg-cell--pc:hover { background: rgba(97, 175, 239, 0.13); }
 
 .reg-name {
+  font-family: var(--font-ui);
   font-size: 9px;
+  font-weight: 600;
   color: var(--text3);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
 }
-.reg-cell--pc .reg-name { color: var(--green2); }
+.reg-cell--pc .reg-name { color: rgba(97,175,239,.7); }
 
 .reg-val {
-  font-size: 15px;
+  font-family: var(--font-mono);
+  font-size: 16px;
   font-weight: 500;
   color: var(--text);
+  line-height: 1;
 }
-.reg-cell--pc .reg-val { font-size: 20px; color: var(--green); }
+
+/* PC: número grande y azul */
+.reg-cell--pc .reg-val {
+  font-size: 24px;
+  color: var(--blue);
+  font-weight: 600;
+}
+
+/* Valores no nulos tienen color de acento */
+.reg-val--nonzero { color: var(--amber); }
+.reg-cell--pc .reg-val--nonzero { color: var(--blue); }
+
+/* Estado HALT: PC en ámbar */
+.reg-val--halted  { color: var(--amber) !important; }
+/* Estado error: todo en rojo */
+.reg-val--error   { color: var(--red)   !important; }

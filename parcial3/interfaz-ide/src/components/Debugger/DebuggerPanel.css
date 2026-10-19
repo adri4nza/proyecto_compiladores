@@ -4,15 +4,16 @@
   height: 100%;
   background: var(--bg1);
   overflow: hidden;
+  border-left: 1px solid var(--border);
 }
 
-/* Cada sub-panel toma 1/3 del espacio disponible */
+/* Registros ocupa menos espacio que instrucciones y memoria */
+.debugger-panel > *:nth-child(1) { flex: 0 0 auto; }   /* RegistersView: altura fija */
+.debugger-panel > *:nth-child(2) { flex: 1; min-height: 0; }   /* InstructionMemory: crece */
+.debugger-panel > *:nth-child(3) { flex: 0 0 160px; }  /* DataMemory: altura fija */
+
 .debugger-panel > * {
-  flex: 1;
-  min-height: 0; /* necesario para que overflow funcione en hijos flex */
   border-bottom: 1px solid var(--border);
   overflow: hidden;
 }
-.debugger-panel > *:last-child {
-  border-bottom: none;
-}
+.debugger-panel > *:last-child { border-bottom: none; }
