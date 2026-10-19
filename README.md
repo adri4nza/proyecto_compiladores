@@ -90,11 +90,13 @@ parcial3/
 ├── modulo_1/                          ← Documentación y pruebas de M1 (Iván)
 ├── modulo_2/                          ← Documentación y pruebas de M2 (Ricardo)
 │
-├── 00_CONTEXTO_PROYECTO.md            ← Contexto general y decisiones del equipo
-├── 01_PLAN_DESARROLLO.md              ← Plan de 4 días con entregables
-├── 02_INSTRUCCIONES_IA_EQUIPO.md      ← Prompt de contexto para asistentes IA
-├── 03_MANUAL_TINY_PLUS.md             ← Manual de referencia del lenguaje
-└── README.md                          ← Este archivo
+├── docs/
+│   ├── 00_CONTEXTO_PROYECTO.md        ← Contexto general y decisiones del equipo
+│   ├── 01_PLAN_DESARROLLO.md          ← Plan de 4 días con entregables
+│   ├── 02_INSTRUCCIONES_IA_EQUIPO.md  ← Prompt de contexto para asistentes IA
+│   ├── 03_MANUAL_TINY_PLUS.md         ← Manual de referencia del lenguaje
+│   └── Especificacion_Proyecto_TinyPlus.md ← Enunciado original de la asignatura
+└── CLAUDE.md                          ← Guía técnica para asistentes de IA
 ```
 
 ---
@@ -305,7 +307,7 @@ Una vez que el IDE está abierto en `http://localhost:5173`:
 El manual completo de sintaxis y semántica de Tiny++ está en:
 
 ```
-parcial3/03_MANUAL_TINY_PLUS.md
+parcial3/docs/03_MANUAL_TINY_PLUS.md
 ```
 
 Incluye: tipos de datos, operadores, estructuras de control, funciones, procedimientos y 4 ejemplos de código listos para ejecutar.

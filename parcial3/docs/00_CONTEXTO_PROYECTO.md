@@ -177,11 +177,9 @@ parcial3/
 ├── simulador_tm/            ← M3: TM.C modificado + Makefile
 ├── servidor_puente/         ← Puente Node.js/Express (nuevo)
 ├── interfaz-ide/            ← M4: proyecto React + TypeScript
-├── TM.C                     ← Original de referencia
-├── tmsimv1.html             ← Referencia visual del depurador
-├── estado_tm_mock.json      ← Contrato JSON oficial M3 → M4
-├── 00_CONTEXTO_PROYECTO.md
-└── 01_PLAN_DESARROLLO.md
+└── docs/
+    ├── 00_CONTEXTO_PROYECTO.md
+    └── 01_PLAN_DESARROLLO.md
 ```
 
 ### 6.3 Compilador (Módulo 1 + 2)

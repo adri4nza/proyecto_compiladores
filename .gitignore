@@ -7,6 +7,7 @@ parcial3/servidor_puente/.env
 
 # ── Java: clases compiladas y artefactos de IntelliJ ─────────────────────────
 parcial3/motor_compilador/out/
+parcial3/motor_compilador/**/out/
 parcial3/motor_compilador/**/*.class
 parcial3/motor_compilador/.idea/workspace.xml
 parcial3/motor_compilador/.idea/tasks.xml
@@ -18,6 +19,9 @@ parcial3/simulador_tm/tm.dSYM/
 
 # ── Vite: build de producción ─────────────────────────────────────────────────
 parcial3/interfaz-ide/dist/
+
+# ── Editores ──────────────────────────────────────────────────────────────────
+.vscode/
 
 # ── Sistemas operativos ───────────────────────────────────────────────────────
 .DS_Store

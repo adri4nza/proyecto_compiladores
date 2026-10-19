@@ -8,7 +8,7 @@ El código, los comentarios, los documentos y los nombres de identificadores est
 
 ## Documentos de referencia obligatorios
 
-Antes de trabajar en un módulo, lee el documento que corresponde (están en `parcial3/`):
+Antes de trabajar en un módulo, lee el documento que corresponde (están en `parcial3/docs/`):
 
 | Documento | Para qué |
 |-----------|----------|
@@ -16,7 +16,7 @@ Antes de trabajar en un módulo, lee el documento que corresponde (están en `pa
 | `00_CONTEXTO_PROYECTO.md` | Arquitectura completa, requisitos de Tiny++, layout de memoria de la TM, guía de arranque de IntelliJ. |
 | `01_PLAN_DESARROLLO.md` | Plan de 4 días con entregables por módulo y orden de prioridad si falta tiempo. |
 | `Especificacion_Proyecto_TinyPlus.md` | Enunciado original de la asignatura (UNET, Compiladores e Intérpretes). |
-| `estado_tm_mock.json` (raíz del repo) | Referencia canónica del Contrato A (estado de la TM). |
+| `estado_tm_mock.json` (`parcial3/interfaz-ide/src/data/`) | Referencia canónica del Contrato A (estado de la TM). |
 
 ## Estado actual del repositorio
 
@@ -28,11 +28,9 @@ Antes de trabajar en un módulo, lee el documento que corresponde (están en `pa
 | `modulo-4` | IDE React + servidor puente (remota) |
 
 ```
-estado_tm_mock.json                      ← Contrato A, fixture para M4
 parcial3/
-├── TM.C                                 ← simulador TM original de Louden (sin modificar)
-├── tmsimv1.html                         ← simulador TM visual, archivo único, base del depurador
 ├── modulo_1/                            ← PLAN_MODULO_1.md, TEORIA_MODULO_1.md, pruebas_m1.sh
+├── modulo_2/                            ← INTEGRACION_M2.md, pruebas_m2.sh, tm_ref.py, casos/
 ├── motor_compilador/                    ← M1 + M2: compilador Tiny++ (Java, proyecto IntelliJ)
 │   └── Compiladores_Tiny_Generacion_2022_1/
 │       ├── src/especificacion/          ← lexico.flex, sintactico.cup, JARs de JFlex y CUP
@@ -40,7 +38,11 @@ parcial3/
 │       ├── ejemplo_fuente/*.tny         ← programas Tiny originales (factorial.tny ya NO compila: no declara variables)
 │       ├── ejemplo_fuente/tinypp/       ← fixtures Tiny++ (*_ok.tny y err_*.tny)
 │       └── ejemplo_generado/*.tm        ← código TM de referencia
-└── *.md                                 ← documentación del equipo
+├── simulador_tm/                        ← M3: TM.C portado + Makefile (binario `tm` no versionado)
+├── servidor_puente/                     ← puente Node.js/Express
+├── interfaz-ide/                        ← M4: IDE React + TypeScript (Vite)
+│   └── src/data/estado_tm_mock.json     ← Contrato A, fixture para M4
+└── docs/*.md                            ← documentación del equipo
 ```
 
 ## Módulo 2 — punto de partida (traspaso de M1)
@@ -63,7 +65,7 @@ Lee la sección "Traspaso al Modulo 2" y la tabla "Alerta de integración" de `p
 
 No hay README ni reglas de Cursor/Copilot. La verificación automatizada es `bash parcial3/modulo_2/pruebas_m2.sh` (compila cada caso, **ejecuta** el `.tm` en el intérprete de referencia `tm_ref.py` y compara las salidas de `OUT`; corre en WSL y en Git Bash) y `bash parcial3/modulo_1/pruebas_m1.sh` (pensada para WSL: en Git Bash de Windows falla si la ruta tiene espacios y porque el classpath usa `:`).
 
-Los directorios `out/` y los `.class` están versionados en git y no hay `.gitignore` propio. Al compilar desde terminal usa un directorio de salida fuera del repo o añade un `.gitignore` antes de hacer commit.
+El `.gitignore` de la raíz del repo excluye los `out/`, los `.class`, los `node_modules/`, el binario `tm` y `.vscode/`; nada de eso debe volver a versionarse.
 
 ## Comandos
 
@@ -102,22 +104,17 @@ java -jar src/especificacion/java-cup-11b.jar \
 
 ### Compilar el simulador TM
 
-`TM.C` **no compila tal como está** con gcc actual, pese a lo que dicen los documentos del plan:
-
-- Usa `gets()`, eliminado de C11 y C++14 → `error: 'gets' was not declared in this scope`.
-- La extensión `.C` en mayúscula hace que gcc lo trate como C++, lo que añade un error en `opCodeTab`/`op++` (`no 'operator++(int)' declared for postfix '++'`, línea 257).
-
-Al portar el archivo a `simulador_tm/`, renómbralo a `tm.c` (minúscula) y sustituye las dos llamadas a `gets(in_Line)` (líneas ~357 y ~410) por `fgets(in_Line, LINESIZE, stdin)`. Después:
+El port ya está hecho en `parcial3/simulador_tm/` (M3): `gets()` fue reemplazado por `fgets`/`readLineStdin`, `main()` arranca con `setbuf(stdout, NULL)` (sin eso el JSON nunca sale del pipe hacia Node) y soporta `OUTC`. Compila con:
 
 ```bash
-gcc tm.c -o tm && ./tm ../motor_compilador/.../ejemplo_generado/facto.tm
+cd parcial3/simulador_tm && make && ./tm ../motor_compilador/.../ejemplo_generado/facto.tm
 ```
 
-Y recuerda la trampa documentada: `setbuf(stdout, NULL);` como primera línea del `main()`, o el JSON nunca sale del pipe hacia Node.
+**Usa siempre el Makefile**: el archivo conserva el nombre `TM.C` y gcc clasifica `.C` (mayúscula) como C++, lo que rompe la compilación (`op++` sobre un enum no es válido en C++). El Makefile fuerza modo C con `-x c`; un `gcc TM.C -o tm` a mano sin esa flag falla con errores raros de C++.
 
 ### Simulador visual
 
-`parcial3/tmsimv1.html` es autocontenido: ábrelo directamente en el navegador. Carga `.tm` por selector de archivo o pegando texto.
+`tmsimv1.html` (el simulador visual de referencia) **fue eliminado del repo**: el depurador vive ahora en el IDE React (`interfaz-ide/`). Si un documento del plan lo menciona, es contexto histórico.
 
 ## Arquitectura
 
@@ -139,7 +136,7 @@ El `main()` vive dentro de `sintactico.cup` (bloque `parser code`) y ejecuta: `p
 
 - **AST deliberadamente simple**: `NodoBase` solo tiene `HermanoDerecha`. Las secuencias de sentencias son listas enlazadas por hermano derecho; los hijos son campos concretos de cada subclase (`NodoIf.getPrueba()`, `NodoRepeat.getCuerpo()`, …). `NodoBase` lleva además `getLinea()`, `getTipo()` (tipo sintetizado) y `getRegistro()` (símbolo resuelto).
 - `TablaSimbolos` es una pila de ámbitos (`abrirAmbito`/`cerrarAmbito`/`buscar`); los ámbitos cerrados quedan en `historial`. Conserva las firmas viejas (`getDireccion` devuelve `-1` si no encuentra, `cargarTabla` ya no se usa en el flujo normal).
-- `UtGen` es el emisor de instrucciones TM y lleva el contador `instruccionActual` / `instruccionMasAlta`. El **backpatching** (`emitirSalto` / `cargarRespaldo` / `restaurarRespaldo`) hace que las líneas se impriman **fuera de orden de PC** (p. ej. la línea 13 sale después de la 39). Es correcto: tanto `TM.C` como `tmsimv1.html` indexan por el prefijo `loc:`, no por orden de aparición.
+- `UtGen` es el emisor de instrucciones TM y lleva el contador `instruccionActual` / `instruccionMasAlta`. El **backpatching** (`emitirSalto` / `cargarRespaldo` / `restaurarRespaldo`) hace que las líneas se impriman **fuera de orden de PC** (p. ej. la línea 13 sale después de la 39). Es correcto: `TM.C` (y cualquier parser de `.tm`, incluido el del IDE) indexa por el prefijo `loc:`, no por orden de aparición.
 - Registros fijados en `UtGen`: `AC=0`, `AC1=1`, `GP=5`, `MP=6`, `PC=7`. El plan reserva `reg[4]` para `FP` (frame pointer) en los Activation Records de M2.
 - Layout de memoria actual: `dMem[0]` = dirección máxima (el preludio la carga en MP), `dMem[1..N]` = globales vía `GP`, pila temporal descendiendo desde `MP` con `desplazamientoTmp` en `Generador`.
 
@@ -149,7 +146,7 @@ El lector de `TM.C` (`readInstructions`) ignora líneas en blanco y las que empi
 
 1. **El stdout del compilador no es un `.tm` válido.** `Generador` imprime cabeceras (`------ CODIGO OBJETO ...`), el volcado del AST y las claves de la tabla de símbolos; además `lexico.flex` y las reglas del `.cup` imprimen trazas de tokens con `debug=true`. Nada de eso lleva prefijo `*`, así que `readInstructions` falla con *"Bad location"*. El Contrato D exige que stdout contenga **solo** el `.tm`: hay que mandar todo lo demás a stderr o eliminarlo (los flags `debug` están en `UtGen.debug`, en `action code` del `.cup` y en el bloque de declaraciones de `lexico.flex`).
 
-2. **`tmsimv1.html` mis-parsea los comentarios del generador.** El parser JS espera los comentarios precedidos de `*` dentro de la línea; `UtGen` los emite sin marcador. Resultado comprobado: `3: ST 0,0(5)  leer: almaceno...` se parsea como `a3=0` en lugar de `a3=5` — se pierde el registro base y el programa se ejecuta mal, en silencio. `TM.C` no sufre esto porque deja de parsear al terminar los argumentos. Al conectar el generador con el depurador visual: o `UtGen` emite `* ` antes del comentario, o se relaja el parser de `tmsimv1.html`.
+2. **Los comentarios de `UtGen` van sin marcador `*` dentro de la línea.** Un parser JS de `.tm` que no se detenga al terminar los argumentos puede mis-parsearlos: en el viejo `tmsimv1.html`, `3: ST 0,0(5)  leer: almaceno...` se parseaba como `a3=0` en lugar de `a3=5` — se perdía el registro base y el programa se ejecutaba mal, en silencio. `TM.C` no sufre esto porque deja de parsear al terminar los argumentos. Cualquier parser de `.tm` en el IDE debe hacer lo mismo (o `UtGen` debe emitir `* ` antes del comentario).
 
 ## Lenguaje: Tiny base vs. Tiny++
 
