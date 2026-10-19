@@ -18,7 +18,7 @@
  *     tm_state(TMState)              → estado actualizado después de cada comando
  *     tm_error(string)               → error del simulador
  *
- * Responsable: Fadri (M4)
+ * Responsable: Francisco (M4)
  * Contratos: 02_INSTRUCCIONES_IA_EQUIPO.md, Sección 2
  */
 
